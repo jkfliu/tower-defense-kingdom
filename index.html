@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tower Defense</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Tower Defense</h1>
+    <div class="hud">
+      <span>Wave <strong id="wave-val">0 / 3</strong></span>
+      <span>Lives <strong id="lives-val">3</strong></span>
+      <span>Score <strong id="score-val">0</strong></span>
+      <span>Gold <strong id="gold-val" class="gold">100</strong></span>
+      <button id="mute-btn">SFX: ON</button>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="canvas"></canvas>
+      <div class="overlay" id="overlay">
+        <p id="msg"></p>
+        <p id="sub-msg"></p>
+        <button id="action-btn">Play Again</button>
+      </div>
+    </div>
+    <div class="game-btns">
+      <button id="start-btn" class="btn">Start Game</button>
+      <button id="new-game-btn" class="btn">New Game</button>
+    </div>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>
