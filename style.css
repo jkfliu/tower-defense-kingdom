@@ -6,13 +6,13 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #050810;
+  background: #1e3d10;
   display: flex;
   justify-content: center;
   align-items: flex-start;
   min-height: 100vh;
   padding: 28px 16px;
-  color: #c0d0e8;
+  color: #d4e8c0;
 }
 
 .container {
@@ -25,20 +25,20 @@ body {
 h1 {
   font-size: 1.6rem;
   font-weight: 600;
-  color: #8ab4ff;
+  color: #a8d870;
   letter-spacing: 0.08em;
-  text-shadow: 0 0 18px rgba(100, 160, 255, 0.5);
+  text-shadow: 0 0 18px rgba(80, 160, 40, 0.5);
 }
 
 .hud {
   display: flex;
   gap: 36px;
   font-size: 0.95rem;
-  color: #7090b8;
-  background: #0a1020;
+  color: #7a9860;
+  background: #162e0a;
   padding: 8px 24px;
   border-radius: 20px;
-  border: 1px solid #1a2840;
+  border: 1px solid #2a4818;
 }
 
 .hud span {
@@ -48,7 +48,7 @@ h1 {
 }
 
 .hud strong {
-  color: #c8e0ff;
+  color: #d4eeaa;
   font-weight: 600;
 }
 
@@ -68,7 +68,7 @@ h1 {
 canvas {
   display: block;
   border-radius: 4px;
-  box-shadow: 0 0 32px rgba(60, 100, 255, 0.2), 0 2px 12px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 32px rgba(30, 80, 10, 0.4), 0 2px 12px rgba(0, 0, 0, 0.5);
   cursor: default;
 }
 
@@ -91,13 +91,13 @@ canvas.placing {
 
 .overlay.active {
   pointer-events: auto;
-  background: rgba(0, 0, 20, 0.6);
+  background: rgba(0, 15, 0, 0.65);
 }
 
 #sub-msg {
   font-size: 0.95rem;
   font-weight: 400;
-  color: #7090b8;
+  color: #90b870;
   text-align: center;
   display: none;
   padding: 4px 0;
@@ -107,8 +107,8 @@ canvas.placing {
   padding: 4px 0;
   font-size: 1.2rem;
   font-weight: 600;
-  color: #c8e0ff;
-  text-shadow: 0 0 12px rgba(100, 160, 255, 0.8);
+  color: #d4eeaa;
+  text-shadow: 0 0 12px rgba(80, 180, 40, 0.8);
   text-align: center;
 }
 
@@ -116,17 +116,17 @@ canvas.placing {
   padding: 10px 32px;
   font-size: 0.95rem;
   font-family: inherit;
-  background: #1a2a6a;
-  color: #c8e0ff;
-  border: 1px solid #3a5aaa;
+  background: #1a4a10;
+  color: #d4eeaa;
+  border: 1px solid #3a7a20;
   border-radius: 6px;
   cursor: pointer;
   transition: background 0.15s;
-  box-shadow: 0 0 12px rgba(60, 100, 255, 0.3), 0 2px 8px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 12px rgba(60, 160, 30, 0.3), 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 #action-btn:hover {
-  background: #243480;
+  background: #246018;
 }
 
 .game-btns {
@@ -148,13 +148,13 @@ canvas.placing {
 #start-btn {
   padding: 8px 24px;
   font-size: 0.85rem;
-  background: #1a2a6a;
-  color: #c8e0ff;
-  border: 1px solid #3a5aaa;
+  background: #1a4a10;
+  color: #d4eeaa;
+  border: 1px solid #3a7a20;
 }
 
 #start-btn:hover {
-  background: #243480;
+  background: #246018;
 }
 
 #start-btn.dimmed {
@@ -177,13 +177,13 @@ canvas.placing {
   padding: 8px 24px;
   font-size: 0.85rem;
   background: transparent;
-  color: #506080;
-  border: 1px solid #1a2840;
+  color: #507040;
+  border: 1px solid #2a4818;
 }
 
 #new-game-btn:hover {
-  background: #0e1828;
-  color: #a0c0e8;
+  background: #162e0a;
+  color: #a0c880;
 }
 
 
@@ -192,8 +192,8 @@ canvas.placing {
   font-size: 0.78rem;
   font-family: inherit;
   background: transparent;
-  color: #506080;
-  border: 1px solid #1a2840;
+  color: #507040;
+  border: 1px solid #2a4818;
   border-radius: 10px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
@@ -201,11 +201,11 @@ canvas.placing {
 }
 
 #mute-btn:hover {
-  background: #0e1828;
-  color: #a0c0e8;
+  background: #162e0a;
+  color: #a0c880;
 }
 
 #mute-btn.muted {
-  color: #3a4a60;
-  border-color: #111820;
+  color: #3a5030;
+  border-color: #182810;
 }
