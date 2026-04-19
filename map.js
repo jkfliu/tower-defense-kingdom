@@ -4,6 +4,9 @@
 
 const NODE_R = 16;  // clickable radius of each level node
 
+const DIFF_LABELS = ['Normal', 'Hard', 'Extreme'];
+const DIFF_COLORS = ['#2a9a20', '#d08000', '#c01818'];
+
 // ─── Level entry / exit ───────────────────────────────────────────────────────
 
 function startLevel(id) {
@@ -23,10 +26,7 @@ function startLevel(id) {
   spawnedCount  = 0;
   lastSpawnTime = 0;
   hoverCell     = null;
-  tierPopup           = null;
-  popupHoverIdx       = -1;
-  turretPopup         = null;
-  turretPopupHoverIdx = -1;
+  resetPopups();
   paused = false;
   wavePreviewDismissed = false;
   setStartButton('Start Wave 1');
@@ -67,6 +67,12 @@ function canvasToWorld(sx, sy) {
 }
 
 // Clamp camera so the image doesn't drift fully off-screen.
+function resetMapCamera() {
+  mapZoom = Math.min(W / MAP_IMG_W, H / MAP_IMG_H) * 0.92;
+  mapCamX = (W - MAP_IMG_W * mapZoom) / 2;
+  mapCamY = (H - MAP_IMG_H * mapZoom) / 2;
+}
+
 function clampMapCamera() {
   const iw = MAP_IMG_W * mapZoom;
   const ih = MAP_IMG_H * mapZoom;
@@ -261,8 +267,6 @@ function drawKingdomMap() {
 
   // Difficulty badge shown only when player has completed the campaign at least once
   if (campaignLoop > 0) {
-    const DIFF_LABELS = ['Normal', 'Hard', 'Extreme'];
-    const DIFF_COLORS = ['#2a7a10', '#c07000', '#a01010'];
     ctx.fillStyle   = DIFF_COLORS[selectedDifficulty];
     ctx.strokeStyle = '#000';
     ctx.lineWidth   = 1.5;
@@ -308,6 +312,7 @@ function drawKingdomMap() {
   });
 
   drawMapPopup();
+  if (confirmRestart) drawConfirmRestart();
 }
 
 
@@ -447,9 +452,7 @@ function drawMapPopup() {
 
   // Difficulty row — interactive if campaignLoop > 0, cosmetic otherwise
   const diffY      = py + 132;
-  const diffLabels = ['Normal', 'Hard', 'Extreme'];
-  const diffColors = ['#2a9a20', '#d08000', '#c01818'];
-  const unlocked   = campaignLoop > 0;
+  const unlocked = campaignLoop > 0;
 
   ctx.fillStyle    = '#7a5018';
   ctx.font         = "12px 'Cinzel', serif";
@@ -474,7 +477,7 @@ function drawMapPopup() {
     const isLocked   = !unlocked && i > 0;
 
     ctx.globalAlpha = isLocked ? 0.35 : 1;
-    ctx.fillStyle   = isSelected ? diffColors[i] : isHovered ? '#d4c080' : '#c8b070';
+    ctx.fillStyle   = isSelected ? DIFF_COLORS[i] : isHovered ? '#d4c080' : '#c8b070';
     ctx.strokeStyle = isSelected ? '#000' : '#8a7040';
     ctx.lineWidth   = isSelected ? 2 : 1;
     ctx.beginPath();
@@ -485,7 +488,7 @@ function drawMapPopup() {
     ctx.font         = `${isSelected ? 'bold ' : ''}12px 'Cinzel', serif`;
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(diffLabels[i], bx + dotW / 2, by + dotR);
+    ctx.fillText(DIFF_LABELS[i], bx + dotW / 2, by + dotR);
     ctx.globalAlpha = 1;
   }
 
@@ -589,10 +592,9 @@ function drawVictoryScreen() {
   const lvName = CAMPAIGN_LEVELS[justCompletedLevel]?.name ?? 'the realm';
   ctx.fillText(`${lvName} has been defended.`, W / 2, H / 2 + 42);
 
-  const DIFF_LABELS = ['Normal', 'Hard', 'Extreme'];
   ctx.fillStyle = '#a090c0';
   ctx.font      = "italic 13px 'Cinzel', serif";
-  ctx.fillText(`Completed on ${DIFF_LABELS[selectedDifficulty]}  ·  Score: ${score}`, W / 2, H / 2 + 64);
+  ctx.fillText(`Completed on ${DIFF_LABELS[selectedDifficulty]} difficulty  ·  Score: ${score}`, W / 2, H / 2 + 64);
 
   // ">" continue button
   const BW = 52, BH = 52;
@@ -630,10 +632,8 @@ function handleMapClick(mx, my) {
   // Reset View hint click
   if (_resetViewRect) {
     const r = _resetViewRect;
-    if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
-      mapZoom = Math.min(W / MAP_IMG_W, H / MAP_IMG_H) * 0.92;
-      mapCamX = (W - MAP_IMG_W * mapZoom) / 2;
-      mapCamY = (H - MAP_IMG_H * mapZoom) / 2;
+    if (pointInRect(mx, my, r)) {
+      resetMapCamera();
       return;
     }
   }
@@ -653,8 +653,7 @@ function handleMapClick(mx, my) {
     }
 
     if (_beginBtnRect) {
-      const b = _beginBtnRect;
-      if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
+      if (pointInRect(mx, my, _beginBtnRect)) {
         const id = mapPopup.levelId;
         mapPopup = null;
         startLevel(id);

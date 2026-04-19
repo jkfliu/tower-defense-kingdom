@@ -38,7 +38,7 @@ const CARD_GAP       = 8;
 // ─── Enemy drawing ────────────────────────────────────────────────────────────
 
 function drawEnemyHpBar(e) {
-  const r     = CELL * 0.27;
+  const r     = ENEMY_RADIUS;
   const ratio = e.hp / e.maxHp;
   const bw = r * 2.2, bh = 3, bx = e.x - bw / 2, by = e.y - r * 1.9 - 4;
   ctx.fillStyle = '#333';
@@ -104,7 +104,7 @@ function drawLegs(e, hipX, hipY, legLen, sw, darkColor) {
 
 // Wave 1 — Goblin: hunched, pointy ears, stubby arms, toothy grin
 function drawGoblin(e) {
-  const x = e.x, y = e.y, r = CELL * 0.27;
+  const x = e.x, y = e.y, r = ENEMY_RADIUS;
   const c = ENEMY_COLORS[1];
 
   drawLegs(e, x, y + r * 0.55, r * 0.62, r * 0.22, c.dark);
@@ -179,7 +179,7 @@ function drawGoblin(e) {
 
 // Wave 2 — Orc: wide stocky body, tusks, heavy brow
 function drawOrc(e) {
-  const x = e.x, y = e.y, r = CELL * 0.27;
+  const x = e.x, y = e.y, r = ENEMY_RADIUS;
   const c = ENEMY_COLORS[2];
 
   drawLegs(e, x, y + r * 0.75, r * 0.55, r * 0.3, c.dark);
@@ -242,7 +242,7 @@ function drawOrc(e) {
 
 // Wave 3 — Troll: tall stooped body, long dangling arms, warty, angry
 function drawTroll(e) {
-  const x = e.x, y = e.y, r = CELL * 0.27;
+  const x = e.x, y = e.y, r = ENEMY_RADIUS;
   const c = ENEMY_COLORS[3];
 
   drawLegs(e, x, y + r * 0.9, r * 0.72, r * 0.28, c.dark);
@@ -307,7 +307,7 @@ function drawTroll(e) {
 
 // Wave 4 — Dark Elf: slim, hooded cloak, glowing eyes, dagger
 function drawDarkElf(e) {
-  const x = e.x, y = e.y, r = CELL * 0.27;
+  const x = e.x, y = e.y, r = ENEMY_RADIUS;
   const c = ENEMY_COLORS[4];
 
   drawLegs(e, x, y + r * 0.75, r * 0.58, r * 0.18, '#1a0e04');
@@ -386,7 +386,7 @@ function drawDarkElf(e) {
 
 // Wave 5 — Demon: horns, bat wings, forked tail, flame eyes
 function drawDemon(e) {
-  const x = e.x, y = e.y, r = CELL * 0.27;
+  const x = e.x, y = e.y, r = ENEMY_RADIUS;
   const c = ENEMY_COLORS[5];
 
   drawLegs(e, x, y + r * 0.7, r * 0.65, r * 0.26, c.dark);
@@ -607,15 +607,20 @@ function drawSmoothPath() {
   for (let i = 1; i < path.length; i++) ctx.lineTo(path[i].x, path[i].y);
   ctx.stroke();
 
-  // ── Dirt specks scattered along path ──
+  // ── Dirt specks + grass blades along each segment (single pass) ──
+  ctx.lineCap = 'butt';
   for (let i = 0; i < path.length - 1; i++) {
-    const a = path[i], b = path[i + 1];
-    const segLen = Math.hypot(b.x - a.x, b.y - a.y);
-    const steps  = Math.ceil(segLen / (CELL * 0.6));
+    const a  = path[i], b = path[i + 1];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const segLen = Math.hypot(dx, dy) || 1;
+    const nx = -dy / segLen, ny = dx / segLen;   // left-side normal
+
+    // Dirt specks
+    const steps = Math.ceil(segLen / (CELL * 0.6));
     for (let s = 0; s < steps; s++) {
       const t   = (s + 0.5) / steps;
-      const mx  = a.x + (b.x - a.x) * t;
-      const my  = a.y + (b.y - a.y) * t;
+      const mx  = a.x + dx * t;
+      const my  = a.y + dy * t;
       const seed = i * 1000 + s;
       for (let k = 0; k < 3; k++) {
         const ox  = (cellRng(seed, k * 3 + 1) - 0.5) * D * 0.85;
@@ -628,17 +633,8 @@ function drawSmoothPath() {
         ctx.fill();
       }
     }
-  }
 
-  // ── Grass blades along both edges of each segment ──
-  ctx.lineCap = 'butt';
-  for (let i = 0; i < path.length - 1; i++) {
-    const a = path[i], b = path[i + 1];
-    const dx = b.x - a.x, dy = b.y - a.y;
-    const len = Math.hypot(dx, dy) || 1;
-    const nx = -dy / len, ny = dx / len;   // left-side normal
-
-    const segLen = Math.hypot(dx, dy);
+    // Grass blades
     const bladeSpacing = CELL * 0.55;
     const count = Math.ceil(segLen / bladeSpacing);
 
@@ -1216,20 +1212,20 @@ function _renderVolcanoBackground() {
   ctx.fillRect(0, 0, W, H);
 }
 
-// ─── Archer tower drawing (Kingdom Rush style) ───────────────────────────────
-function drawArcherTower(t, sc) {
+// ─── Shared tower base (stone keep + crenellations + platform) ───────────────
+function drawTowerBase(t, sc) {
   const face   = TOWER_FACE[t.tier];
   const side   = TOWER_SIDE[t.tier];
   const dark   = TOWER_DARK[t.tier];
   const mortar = TOWER_MORTAR[t.tier];
 
-  const TW  = CELL * 1.0;
-  const TH  = CELL * 0.82;
-  const D   = CELL * 0.22;
-  const hw  = TW / 2;
+  const TW = CELL * 1.0;
+  const TH = CELL * 0.82;
+  const D  = CELL * 0.22;
+  const hw = TW / 2;
   const yTop  = -TH * 0.55;
   const yBase =  TH * 0.45;
-  const mH    = CELL * 0.14;         // merlon height
+  const mH    = CELL * 0.14;
 
   ctx.save();
   ctx.translate(t.x, t.y);
@@ -1248,8 +1244,8 @@ function drawArcherTower(t, sc) {
   ctx.strokeStyle = dark;
   ctx.lineWidth   = 0.8;
   ctx.beginPath();
-  ctx.moveTo(-hw, yTop);     ctx.lineTo(hw, yTop);
-  ctx.lineTo(hw, yTop - D);  ctx.lineTo(-hw, yTop - D);
+  ctx.moveTo(-hw, yTop);    ctx.lineTo(hw, yTop);
+  ctx.lineTo(hw, yTop - D); ctx.lineTo(-hw, yTop - D);
   ctx.closePath();
   ctx.fill(); ctx.stroke();
 
@@ -1308,6 +1304,53 @@ function drawArcherTower(t, sc) {
   ctx.globalAlpha = 1;
 
   ctx.restore();
+}
+
+// Draws tier upgrade flags on a tower (advanced = 1 red flag, ultimate = 2 gold flags).
+function drawTierFlags(t, sc) {
+  if (t.tier !== 'advanced' && t.tier !== 'ultimate') return;
+
+  const TH = CELL * 0.82;
+  const D  = CELL * 0.22;
+  const hw = CELL * 0.5;
+  const yTop = -TH * 0.55;
+
+  const flagColor = t.tier === 'ultimate' ? '#e8a820' : '#cc3030';
+  const poleTopY  = t.y + (yTop - D - CELL * 0.18) * sc;
+  const poleBotY  = t.y + (yTop - D + CELL * 0.02) * sc;
+  const poles     = t.tier === 'ultimate'
+    ? [{ x: t.x + (-hw + CELL * 0.08) * sc }, { x: t.x + (hw - CELL * 0.08) * sc }]
+    : [{ x: t.x + (-hw + CELL * 0.08) * sc }];
+
+  for (const pole of poles) {
+    ctx.strokeStyle = '#5a3a10';
+    ctx.lineWidth   = 1.4 * sc;
+    ctx.lineCap     = 'round';
+    ctx.beginPath(); ctx.moveTo(pole.x, poleTopY); ctx.lineTo(pole.x, poleBotY); ctx.stroke();
+    ctx.lineCap     = 'butt';
+
+    ctx.fillStyle = flagColor;
+    ctx.beginPath();
+    ctx.moveTo(pole.x,                    poleTopY);
+    ctx.lineTo(pole.x + CELL * 0.26 * sc, poleTopY + CELL * 0.1  * sc);
+    ctx.lineTo(pole.x + CELL * 0.26 * sc, poleTopY + CELL * 0.22 * sc);
+    ctx.lineTo(pole.x,                    poleTopY + CELL * 0.22 * sc);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillRect(pole.x, poleTopY + CELL * 0.06 * sc, CELL * 0.26 * sc, CELL * 0.04 * sc);
+  }
+}
+
+// ─── Archer tower drawing (Kingdom Rush style) ───────────────────────────────
+function drawArcherTower(t, sc) {
+  drawTowerBase(t, sc);
+
+  const TH   = CELL * 0.82;
+  const hw   = CELL * 0.5;
+  const yTop = -TH * 0.55;
+  const mH   = CELL * 0.14;
 
   // ── Archer (upright, beside flag pole) ──
   const archerX = t.x + (-hw + CELL * 0.22) * sc;
@@ -1382,34 +1425,7 @@ function drawArcherTower(t, sc) {
   ctx.restore();
   ctx.restore();
 
-  // ── Tier flags ──
-  if (t.tier === 'advanced' || t.tier === 'ultimate') {
-    const flagColor = t.tier === 'ultimate' ? '#e8a820' : '#cc3030';
-    const poleTopY  = t.y + (yTop - D - CELL * 0.18) * sc;
-    const poleBotY  = t.y + (yTop - D + CELL * 0.02) * sc;
-    const poles     = t.tier === 'ultimate'
-      ? [{ x: t.x + (-hw + CELL * 0.08) * sc }, { x: t.x + (hw - CELL * 0.08) * sc }]
-      : [{ x: t.x + (-hw + CELL * 0.08) * sc }];
-
-    for (const pole of poles) {
-      ctx.strokeStyle = '#5a3a10';
-      ctx.lineWidth   = 1.4 * sc;
-      ctx.lineCap     = 'round';
-      ctx.beginPath(); ctx.moveTo(pole.x, poleTopY); ctx.lineTo(pole.x, poleBotY); ctx.stroke();
-
-      ctx.fillStyle = flagColor;
-      ctx.beginPath();
-      ctx.moveTo(pole.x, poleTopY);
-      ctx.lineTo(pole.x + CELL * 0.26 * sc, poleTopY + CELL * 0.1  * sc);
-      ctx.lineTo(pole.x + CELL * 0.26 * sc, poleTopY + CELL * 0.22 * sc);
-      ctx.lineTo(pole.x,                    poleTopY + CELL * 0.22 * sc);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = 'rgba(255,255,255,0.25)';
-      ctx.fillRect(pole.x, poleTopY + CELL * 0.06 * sc, CELL * 0.26 * sc, CELL * 0.04 * sc);
-    }
-  }
+  drawTierFlags(t, sc);
 
   // Arrow-release flash
   if (t.fireAnim > 0) {
@@ -1426,87 +1442,19 @@ function drawArcherTower(t, sc) {
 
 // ─── Mage tower drawing ───────────────────────────────────────────────────────
 function drawMageTower(t, sc) {
-  const face   = TOWER_FACE[t.tier];
-  const side   = TOWER_SIDE[t.tier];
-  const dark   = TOWER_DARK[t.tier];
-  const mortar = TOWER_MORTAR[t.tier];
+  drawTowerBase(t, sc);
 
-  const TW   = CELL * 1.0;
   const TH   = CELL * 0.82;
-  const D    = CELL * 0.22;
-  const hw   = TW / 2;
-  const yTop  = -TH * 0.55;
-  const yBase =  TH * 0.45;
-  const mH    = CELL * 0.14;
+  const hw   = CELL * 0.5;
+  const yTop = -TH * 0.55;
+  const mH   = CELL * 0.14;
 
   // Mage robe colour by tier
   const robeColor = t.tier === 'ultimate' ? '#6020c0' : t.tier === 'advanced' ? '#5028b0' : '#4040a0';
   const robeDark  = t.tier === 'ultimate' ? '#3a1080' : t.tier === 'advanced' ? '#301870' : '#282870';
   // Staff orb colour by tier — brighter when recently fired
-  const orbBase   = t.tier === 'ultimate' ? '#c0d8ff' : t.tier === 'advanced' ? '#4060e0' : '#7040a0';
-  const orbGlow   = t.fireAnim > 0;
-
-  ctx.save();
-  ctx.translate(t.x, t.y);
-  ctx.scale(sc, sc);
-
-  // Ground shadow
-  ctx.globalAlpha = 0.3;
-  ctx.fillStyle   = '#000';
-  ctx.beginPath();
-  ctx.ellipse(0, yBase + CELL * 0.08, hw * 1.1, CELL * 0.1, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 1;
-
-  // Top face
-  ctx.fillStyle = side; ctx.strokeStyle = dark; ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  ctx.moveTo(-hw, yTop); ctx.lineTo(hw, yTop);
-  ctx.lineTo(hw, yTop - D); ctx.lineTo(-hw, yTop - D);
-  ctx.closePath(); ctx.fill(); ctx.stroke();
-
-  // Front face
-  ctx.fillStyle = face;
-  ctx.fillRect(-hw, yTop, TW, TH);
-
-  // Brick mortar
-  ctx.strokeStyle = mortar; ctx.lineWidth = 0.7;
-  for (let i = 1; i <= 3; i++) {
-    const my = yTop + (TH * i) / 4;
-    ctx.beginPath(); ctx.moveTo(-hw, my); ctx.lineTo(hw, my); ctx.stroke();
-  }
-  for (let row = 0; row < 4; row++) {
-    const rowY = yTop + (TH * row) / 4;
-    const offset = (row % 2) * (TW / 6);
-    for (let col = 0; col < 4; col++) {
-      const mx = -hw + offset + col * (TW / 3);
-      ctx.beginPath(); ctx.moveTo(mx, rowY); ctx.lineTo(mx, rowY + TH / 4); ctx.stroke();
-    }
-  }
-
-  // Front face border
-  ctx.strokeStyle = dark; ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.moveTo(-hw, yTop); ctx.lineTo(-hw, yBase);
-  ctx.lineTo(hw, yBase); ctx.lineTo(hw, yTop);
-  ctx.stroke();
-
-  // Crenellations
-  const merlonCount = 5;
-  const mW = TW / (merlonCount * 2 - 1);
-  for (let i = 0; i < merlonCount; i++) {
-    const mx = -hw + i * mW * 2;
-    ctx.fillStyle = side; ctx.fillRect(mx, yTop - mH - D * 0.5, mW, D * 0.5);
-    ctx.fillStyle = face; ctx.fillRect(mx, yTop - mH, mW, mH);
-    ctx.strokeStyle = dark; ctx.lineWidth = 0.8; ctx.strokeRect(mx, yTop - mH, mW, mH);
-  }
-
-  // Wooden platform
-  const platY = yTop - D * 0.5;
-  ctx.fillStyle = '#7a5020'; ctx.strokeStyle = '#4a2e10'; ctx.lineWidth = 0.5;
-  ctx.fillRect(-hw + 2, platY, TW - 4, D * 0.5);
-
-  ctx.restore();
+  const orbBase = t.tier === 'ultimate' ? '#c0d8ff' : t.tier === 'advanced' ? '#4060e0' : '#7040a0';
+  const orbGlow = t.fireAnim > 0;
 
   // ── Robed mage figure ──
   const mageX = t.x + (-hw + CELL * 0.22) * sc;
@@ -1578,28 +1526,7 @@ function drawMageTower(t, sc) {
 
   ctx.restore();
 
-  // ── Tier flags (same as archer) ──
-  if (t.tier === 'advanced' || t.tier === 'ultimate') {
-    const flagColor = t.tier === 'ultimate' ? '#e8a820' : '#cc3030';
-    const poleTopY  = t.y + (yTop - D - CELL * 0.18) * sc;
-    const poleBotY  = t.y + (yTop - D + CELL * 0.02) * sc;
-    const poles     = t.tier === 'ultimate'
-      ? [{ x: t.x + (-hw + CELL * 0.08) * sc }, { x: t.x + (hw - CELL * 0.08) * sc }]
-      : [{ x: t.x + (-hw + CELL * 0.08) * sc }];
-
-    for (const pole of poles) {
-      ctx.strokeStyle = '#5a3a10'; ctx.lineWidth = 1.4 * sc; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(pole.x, poleTopY); ctx.lineTo(pole.x, poleBotY); ctx.stroke();
-      ctx.lineCap = 'butt';
-      ctx.fillStyle = flagColor;
-      ctx.beginPath();
-      ctx.moveTo(pole.x, poleTopY);
-      ctx.lineTo(pole.x + CELL * 0.26 * sc, poleTopY + CELL * 0.1  * sc);
-      ctx.lineTo(pole.x + CELL * 0.26 * sc, poleTopY + CELL * 0.22 * sc);
-      ctx.lineTo(pole.x,                    poleTopY + CELL * 0.22 * sc);
-      ctx.closePath(); ctx.fill();
-    }
-  }
+  drawTierFlags(t, sc);
 
   // Magic release flash (blue-purple instead of yellow)
   if (t.fireAnim > 0) {
@@ -1910,9 +1837,73 @@ function render() {
   renderParticles();
   renderBullets();
   renderPlacementUI();
+  if (confirmRestart) drawConfirmRestart();  // drawn over game or map
   updateHUD();
 }
 
 function renderPath() {
   drawSmoothPath();
+}
+
+// ─── Confirm restart dialog ───────────────────────────────────────────────────
+let _confirmYesRect = null;
+let _confirmNoRect  = null;
+
+function drawConfirmRestart() {
+  const PW = 340, PH = 150;
+  const px = (W - PW) / 2, py = (H - PH) / 2;
+
+  // Dim overlay
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(0, 0, W, H);
+
+  // Card
+  ctx.fillStyle   = '#ede0b0';
+  ctx.strokeStyle = '#7a5018';
+  ctx.lineWidth   = 2.5;
+  ctx.beginPath();
+  ctx.roundRect(px, py, PW, PH, 10);
+  ctx.fill(); ctx.stroke();
+
+  // Title
+  ctx.fillStyle    = '#3a2408';
+  ctx.font         = "bold 16px 'Cinzel', serif";
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText(confirmRestart === 'campaign' ? 'New Campaign?' : 'Restart Level?', px + PW / 2, py + 20);
+
+  // Sub-text
+  ctx.fillStyle = '#5a3c10';
+  ctx.font      = "italic 12px 'Cinzel', serif";
+  ctx.fillText('All progress will be lost.', px + PW / 2, py + 48);
+
+  // Buttons
+  const BW = 110, BH = 32, gap = 16;
+  const totalBW = BW * 2 + gap;
+  const bBaseX  = px + (PW - totalBW) / 2;
+  const bY      = py + PH - 52;
+
+  // Yes
+  ctx.fillStyle   = '#7a1010';
+  ctx.strokeStyle = '#c03030';
+  ctx.lineWidth   = 1.5;
+  ctx.beginPath(); ctx.roundRect(bBaseX, bY, BW, BH, 6); ctx.fill(); ctx.stroke();
+  ctx.fillStyle    = '#ffe0e0';
+  ctx.font         = "bold 13px 'Cinzel', serif";
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Restart', bBaseX + BW / 2, bY + BH / 2);
+  _confirmYesRect = { x: bBaseX, y: bY, w: BW, h: BH };
+
+  // No
+  const noX = bBaseX + BW + gap;
+  ctx.fillStyle   = '#1a4a10';
+  ctx.strokeStyle = '#3a7a20';
+  ctx.lineWidth   = 1.5;
+  ctx.beginPath(); ctx.roundRect(noX, bY, BW, BH, 6); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#d4eeaa';
+  ctx.fillText('Cancel', noX + BW / 2, bY + BH / 2);
+  _confirmNoRect = { x: noX, y: bY, w: BW, h: BH };
+
+  ctx.textAlign    = 'left';
+  ctx.textBaseline = 'alphabetic';
 }

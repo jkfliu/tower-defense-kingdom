@@ -2,7 +2,24 @@
 // Input handling, popup logic, HUD updates, wave control, and game init.
 // Reads globals from constants.js, game.js state vars, towers.js, theme.js.
 
+// ─── Cached DOM refs ──────────────────────────────────────────────────────────
+const $waveVal  = document.getElementById('wave-val');
+const $livesVal = document.getElementById('lives-val');
+const $scoreVal = document.getElementById('score-val');
+const $goldVal  = document.getElementById('gold-val');
+const $overlay  = document.getElementById('overlay');
+const $msg      = document.getElementById('msg');
+const $subMsg   = document.getElementById('sub-msg');
+const $actionBtn = document.getElementById('action-btn');
+const $startBtn  = document.getElementById('start-btn');
+const $quitBtn   = document.getElementById('quit-btn');
+const $muteBtn    = document.getElementById('mute-btn');
+const $debugBtn   = document.getElementById('debug-btn');
+const $newGameBtn = document.getElementById('new-game-btn');
+
 // ─── Canvas interaction ───────────────────────────────────────────────────────
+const canvasXY = e => { const r = canvas.getBoundingClientRect(); return { mx: e.clientX - r.left, my: e.clientY - r.top }; };
+
 canvas.addEventListener('mousemove', e => {
   if (phase === 'map' && mapDragging) {
     mapCamX = mapDragCamX + (e.clientX - mapDragStartX);
@@ -11,25 +28,20 @@ canvas.addEventListener('mousemove', e => {
     return;
   }
   if (phase === 'map' && mapPopup) {
-    const rect = canvas.getBoundingClientRect();
-    handleMapPopupHover(e.clientX - rect.left, e.clientY - rect.top);
+    const { mx, my } = canvasXY(e);
+    handleMapPopupHover(mx, my);
     return;
   }
   if (phase === 'map' && _resetViewRect) {
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    const r  = _resetViewRect;
-    canvas.style.cursor = (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) ? 'pointer' : 'default';
+    const { mx, my } = canvasXY(e);
+    canvas.style.cursor = pointInRect(mx, my, _resetViewRect) ? 'pointer' : 'default';
     return;
   }
   if (phase !== 'placing' && phase !== 'between' && phase !== 'wave') {
     hoverCell = null;
     return;
   }
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
+  const { mx, my } = canvasXY(e);
   hoverCell = {
     col: Math.floor(mx / CELL),
     row: Math.floor(my / CELL),
@@ -54,9 +66,7 @@ canvas.addEventListener('mouseleave', () => {
 canvas.addEventListener('wheel', e => {
   if (phase !== 'map' || mapPopup) return;
   e.preventDefault();
-  const rect  = canvas.getBoundingClientRect();
-  const mx    = e.clientX - rect.left;
-  const my    = e.clientY - rect.top;
+  const { mx, my } = canvasXY(e);
   const delta = e.deltaY < 0 ? 1.1 : 0.91;
   const newZoom = Math.min(2.5, Math.max(0.35, mapZoom * delta));
   // Zoom toward cursor
@@ -82,31 +92,33 @@ canvas.addEventListener('click', e => {
   const dragDist = Math.hypot(e.clientX - mapDragStartX, e.clientY - mapDragStartY);
   if (phase === 'map' && !mapPopup && dragDist > 5) return;
 
-  const rect = canvas.getBoundingClientRect();
-  const mx  = e.clientX - rect.left;
-  const my  = e.clientY - rect.top;
+  const { mx, my } = canvasXY(e);
 
+  if (confirmRestart === 'campaign') { handleConfirmRestartClick(mx, my); return; }
   if (phase === 'map')     { handleMapClick(mx, my); return; }
   if (phase === 'victory') {
-    if (_victoryBtnRect) {
-      const b = _victoryBtnRect;
-      if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
-        if (currentLevel >= CAMPAIGN_LEVELS.length) {
-          // All levels done — wrap campaign, go straight to map
-          currentLevel = 0;
-          campaignLoop++;
-          phase = 'map';
-        } else {
-          // More levels remain — play reveal animation
-          revealProgress = 0;
-          phase = 'reveal';
-        }
-        updateHUD();
+    if (_victoryBtnRect && pointInRect(mx, my, _victoryBtnRect)) {
+      if (currentLevel >= CAMPAIGN_LEVELS.length) {
+        // All levels done — wrap campaign, go straight to map
+        currentLevel = 0;
+        campaignLoop++;
+        phase = 'map';
+      } else {
+        // More levels remain — play reveal animation
+        revealProgress = 0;
+        phase = 'reveal';
       }
+      updateHUD();
     }
     return;
   }
   if (phase !== 'placing' && phase !== 'between' && phase !== 'wave') return;
+
+  // Confirm restart dialog takes priority
+  if (confirmRestart === 'level') {
+    handleConfirmRestartClick(mx, my);
+    return;
+  }
 
   const col = Math.floor(mx / CELL);
   const row = Math.floor(my / CELL);
@@ -173,58 +185,53 @@ function handleTurretPopupClick(mx, my) {
 
 // ─── HUD & overlay ────────────────────────────────────────────────────────────
 function setStartButton(label, classes = []) {
-  const btn = document.getElementById('start-btn');
-  btn.textContent = label;
-  btn.className   = classes.join(' ');
+  $startBtn.textContent = label;
+  $startBtn.classList.remove('dimmed', 'paused');
+  classes.forEach(c => $startBtn.classList.add(c));
 }
 
 function showOverlay(msg, btnLabel, subMsg = '') {
-  const overlay = document.getElementById('overlay');
-  overlay.classList.add('active');
-  const msgEl = document.getElementById('msg');
-  msgEl.textContent   = msg;
-  msgEl.style.display = msg ? 'block' : 'none';
-  const subEl = document.getElementById('sub-msg');
-  subEl.textContent   = subMsg;
-  subEl.style.display = subMsg ? 'block' : 'none';
-  const btn = document.getElementById('action-btn');
-  btn.textContent   = btnLabel;
-  btn.style.display = btnLabel ? 'inline-block' : 'none';
+  $overlay.classList.add('active');
+  $msg.textContent   = msg;
+  $msg.style.display = msg ? 'block' : 'none';
+  $subMsg.textContent   = subMsg;
+  $subMsg.style.display = subMsg ? 'block' : 'none';
+  $actionBtn.textContent   = btnLabel;
+  $actionBtn.style.display = btnLabel ? 'inline-block' : 'none';
 }
 
 function hideOverlay() {
-  document.getElementById('overlay').classList.remove('active');
-  document.getElementById('msg').style.display        = 'none';
-  document.getElementById('sub-msg').style.display    = 'none';
-  document.getElementById('action-btn').style.display = 'none';
+  $overlay.classList.remove('active');
+  $msg.style.display       = 'none';
+  $subMsg.style.display    = 'none';
+  $actionBtn.style.display = 'none';
 }
 
 function updateHUD() {
-  document.getElementById('wave-val').textContent  = phase === 'map' ? '—' : `${wave} / ${wavesInLevel()}`;
-  document.getElementById('lives-val').textContent = phase === 'map' ? '—' : lives;
-  document.getElementById('score-val').textContent = score;
-  document.getElementById('gold-val').textContent  = phase === 'map' ? '—' : gold;
+  $waveVal.textContent  = phase === 'map' ? '—' : `${wave} / ${wavesInLevel()}`;
+  $livesVal.textContent = phase === 'map' ? '—' : lives;
+  $scoreVal.textContent = score;
+  $goldVal.textContent  = phase === 'map' ? '—' : gold;
   const inGame = phase === 'placing' || phase === 'wave' || phase === 'between';
-  document.getElementById('start-btn').style.display      = inGame ? 'inline-block' : 'none';
-  document.getElementById('quit-btn').style.display        = inGame ? 'inline-block' : 'none';
+  $startBtn.style.display = inGame ? 'inline-block' : 'none';
+  $quitBtn.style.display  = inGame ? 'inline-block' : 'none';
+  $newGameBtn.textContent = inGame ? 'Restart Level' : 'New Campaign';
 }
 
 // ─── Button event listeners ───────────────────────────────────────────────────
-document.getElementById('mute-btn').addEventListener('click', () => {
+$muteBtn.addEventListener('click', () => {
   muted = !muted;
-  const btn = document.getElementById('mute-btn');
-  btn.textContent = muted ? 'SFX: OFF' : 'SFX: ON';
-  btn.classList.toggle('muted', muted);
+  $muteBtn.textContent = muted ? 'SFX: OFF' : 'SFX: ON';
+  $muteBtn.classList.toggle('muted', muted);
 });
 
-document.getElementById('debug-btn').addEventListener('click', () => {
+$debugBtn.addEventListener('click', () => {
   debugMode = !debugMode;
-  const btn = document.getElementById('debug-btn');
-  btn.textContent = debugMode ? 'Debug: ON' : 'Debug: OFF';
-  btn.classList.toggle('active', debugMode);
+  $debugBtn.textContent = debugMode ? 'Debug: ON' : 'Debug: OFF';
+  $debugBtn.classList.toggle('active', debugMode);
 });
 
-document.getElementById('start-btn').addEventListener('click', () => {
+$startBtn.addEventListener('click', () => {
   if (phase === 'placing' || phase === 'between') {
     startWave();
   } else if (phase === 'wave') {
@@ -234,10 +241,12 @@ document.getElementById('start-btn').addEventListener('click', () => {
   }
 });
 
-document.getElementById('new-game-btn').addEventListener('click', initGame);
+$newGameBtn.addEventListener('click', () => {
+  const inGame = phase === 'placing' || phase === 'wave' || phase === 'between';
+  confirmRestart = inGame ? 'level' : 'campaign';
+});
 
-
-document.getElementById('quit-btn').addEventListener('click', () => {
+$quitBtn.addEventListener('click', () => {
   bullets   = [];
   enemies   = [];
   particles = [];
@@ -249,7 +258,7 @@ document.getElementById('quit-btn').addEventListener('click', () => {
   updateHUD();
 });
 
-document.getElementById('action-btn').addEventListener('click', () => {
+$actionBtn.addEventListener('click', () => {
   if (phase === 'lose') {
     // Return to map so player can retry the same level
     phase = 'map';
@@ -262,6 +271,18 @@ document.getElementById('action-btn').addEventListener('click', () => {
   }
 });
 
+function handleConfirmRestartClick(mx, my) {
+  if (_confirmYesRect && pointInRect(mx, my, _confirmYesRect)) {
+    const type = confirmRestart;
+    confirmRestart = '';
+    if (type === 'level') startLevel(currentLevel);
+    else initGame();
+  } else if (_confirmNoRect && pointInRect(mx, my, _confirmNoRect)) {
+    confirmRestart = '';
+  }
+  // clicks outside the card do nothing — dialog stays open
+}
+
 // ─── Wave & init ──────────────────────────────────────────────────────────────
 function startWave() {
   wave++;
@@ -269,9 +290,7 @@ function startWave() {
   lastSpawnTime = 0;
   enemies       = [];
   bullets       = [];
-  tierPopup           = null;
-  turretPopup         = null;
-  turretPopupHoverIdx = -1;
+  resetPopups();
   phase  = 'wave';
   paused = false;
   canvas.classList.remove('placing');
@@ -285,10 +304,7 @@ function initGame() {
   selectedDifficulty = 0;
   justCompletedLevel = 0;
   revealProgress     = 0;
-  // Fit the map image inside the canvas at startup
-  mapZoom = Math.min(W / MAP_IMG_W, H / MAP_IMG_H) * 0.92;
-  mapCamX = (W - MAP_IMG_W * mapZoom) / 2;
-  mapCamY = (H - MAP_IMG_H * mapZoom) / 2;
+  resetMapCamera();
   mapDragging = false;
   turrets   = [];
   enemies   = [];
@@ -303,10 +319,10 @@ function initGame() {
   spawnedCount  = 0;
   lastSpawnTime = 0;
   hoverCell     = null;
-  tierPopup           = null;
-  popupHoverIdx       = -1;
-  turretPopup         = null;
-  turretPopupHoverIdx = -1;
+  resetPopups();
+  mapPopup        = null;
+  _victoryBtnRect = null;
+  wavePreviewDismissed = false;
   paused = false;
   setStartButton('', ['dimmed']);
   canvas.classList.remove('placing');

@@ -226,7 +226,7 @@ canvas.placing {
 }
 
 
-#mute-btn {
+.hud-toggle {
   padding: 2px 10px;
   font-size: 0.78rem;
   font-family: inherit;
@@ -239,7 +239,7 @@ canvas.placing {
   align-self: center;
 }
 
-#mute-btn:hover {
+.hud-toggle:hover {
   background: #162e0a;
   color: #a0c880;
 }
@@ -247,24 +247,6 @@ canvas.placing {
 #mute-btn.muted {
   color: #3a5030;
   border-color: #182810;
-}
-
-#debug-btn {
-  padding: 2px 10px;
-  font-size: 0.78rem;
-  font-family: inherit;
-  background: transparent;
-  color: #507040;
-  border: 1px solid #2a4818;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-  align-self: center;
-}
-
-#debug-btn:hover {
-  background: #162e0a;
-  color: #a0c880;
 }
 
 #debug-btn.active {

@@ -51,7 +51,7 @@ function updateTurrets(dt) {
       if (t.cooldown <= 0) {
         t.cooldown = 1 / t.fireRate;
         t.fireAnim = 1.0;
-        const angle = Math.atan2(nearest.y - t.y, nearest.x - t.x);
+        const angle = t.angle;
         if (t.kind === 'mage') {
           playMagicShot(t.tier);
           const speed = ORB_SPEED;

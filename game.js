@@ -12,6 +12,7 @@ const ctx = canvas.getContext('2d');
 const randInt = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
 const cx = col => col * CELL + CELL / 2;   // cell-centre x
 const cy = row => row * CELL + CELL / 2;   // cell-centre y
+const pointInRect = (mx, my, r) => mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h;
 
 // ─── Game state ───────────────────────────────────────────────────────────────
 // Declared here; initialised (and reset) in initGame() in ui.js.
@@ -32,9 +33,17 @@ let revealProgress     = 0; // 0→1 during 'reveal' phase
 
 // UI state
 let wavePreviewDismissed = false;
+let confirmRestart       = '';     // 'level' | 'campaign' | ''
 
 function wavesInLevel()    { return Math.min(currentLevel + 1, 5); }
 function enemiesPerWave()  { return debugMode ? 1 : ENEMIES_PER_WAVE; }
+function resetPopups()     {
+  confirmRestart      = '';
+  tierPopup           = null;
+  popupHoverIdx       = -1;
+  turretPopup         = null;
+  turretPopupHoverIdx = -1;
+}
 
 // Map camera state (pan + zoom over the map image)
 let mapCamX    = 0;      // world-space pan offset X
