@@ -19,7 +19,7 @@ const pointInRect = (mx, my, r) => mx >= r.x && mx <= r.x + r.w && my >= r.y && 
 let path, pathSet, pathRenderSet;
 let turrets, enemies, bullets, particles;
 let wave, lives, score, gold, phase;
-let spawnedCount, lastSpawnTime, lastFrame;
+let spawnedCount, lastSpawnTime, nextSpawnDelay, lastFrame;
 let paused    = false;
 let debugMode = false;
 let hoverCell = null;           // {row, col} under mouse, or null
@@ -75,10 +75,11 @@ function gameLoop(ts) {
   lastFrame = ts;
 
   if (phase === 'wave' && !paused) {
-    if (spawnedCount < enemiesPerWave() && ts - lastSpawnTime >= SPAWN_MS) {
+    if (spawnedCount < enemiesPerWave() && ts - lastSpawnTime >= nextSpawnDelay) {
       enemies.push(makeEnemy());
       spawnedCount++;
-      lastSpawnTime = ts;
+      lastSpawnTime  = ts;
+      nextSpawnDelay = SPAWN_MS_MIN + Math.random() * (SPAWN_MS_MAX - SPAWN_MS_MIN);
     }
 
     updateEnemies(dt);

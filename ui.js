@@ -286,8 +286,9 @@ function handleConfirmRestartClick(mx, my) {
 // ─── Wave & init ──────────────────────────────────────────────────────────────
 function startWave() {
   wave++;
-  spawnedCount  = 0;
-  lastSpawnTime = 0;
+  spawnedCount   = 0;
+  lastSpawnTime  = 0;
+  nextSpawnDelay = SPAWN_MS_MIN + Math.random() * (SPAWN_MS_MAX - SPAWN_MS_MIN);
   enemies       = [];
   bullets       = [];
   resetPopups();

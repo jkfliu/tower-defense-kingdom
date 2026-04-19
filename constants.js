@@ -8,7 +8,8 @@ const H    = ROWS * CELL;   // 600
 
 // ─── Waves ────────────────────────────────────────────────────────────────────
 const ENEMIES_PER_WAVE = 10;
-const SPAWN_MS         = 1000;
+const SPAWN_MS_MIN     = 600;   // fastest spawn interval (ms)
+const SPAWN_MS_MAX     = 1800;  // slowest spawn interval (ms)
 
 // ─── Enemies ──────────────────────────────────────────────────────────────────
 const ENEMY_RADIUS      = Math.round(CELL * 0.27);
@@ -17,6 +18,9 @@ const ENEMY_HP_SCALE    = 30;
 const ENEMY_BASE_SPEED  = 1.8 * CELL;   // px/sec
 const ENEMY_SPEED_SCALE = 0.35 * CELL;  // px/sec per wave
 const ENEMY_NAMES       = [null, 'Goblins', 'Orcs', 'Trolls', 'Dark Elves', 'Demons'];
+// Per-type speed and HP multipliers (index 1–5 matches type)
+const ENEMY_SPEED_MOD   = [null, 1.4,  1.0,  0.65, 1.25, 0.75];
+const ENEMY_HP_MOD      = [null, 0.6,  1.0,  1.8,  0.9,  2.2 ];
 
 // Enemy types allowed per level (0-based). Levels 0-3: no dark elves/demons.
 const LEVEL_ENEMY_POOL = [

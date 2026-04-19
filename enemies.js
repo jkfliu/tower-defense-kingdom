@@ -5,9 +5,9 @@
 
 function makeEnemy() {
   const diffScale = 1 + selectedDifficulty * 0.4;
-  const hp = (ENEMY_BASE_HP + (wave - 1) * ENEMY_HP_SCALE) * diffScale;
   const pool = LEVEL_ENEMY_POOL[currentLevel] || [1];
   const type = pool[Math.floor(Math.random() * pool.length)];
+  const hp = (ENEMY_BASE_HP + (wave - 1) * ENEMY_HP_SCALE) * ENEMY_HP_MOD[type] * diffScale;
   const seg0len = Math.hypot(path[1].x - path[0].x, path[1].y - path[0].y);
   return {
     type,
@@ -16,7 +16,7 @@ function makeEnemy() {
     dist:          0,         // total px traveled (for animation)
     hp,
     maxHp: hp,
-    speed: (ENEMY_BASE_SPEED + (wave - 1) * ENEMY_SPEED_SCALE) * diffScale,
+    speed: (ENEMY_BASE_SPEED + (wave - 1) * ENEMY_SPEED_SCALE) * ENEMY_SPEED_MOD[type] * diffScale,
     x:      path[0].x,
     y:      path[0].y,
     facing: Math.atan2(path[1].y - path[0].y, path[1].x - path[0].x),

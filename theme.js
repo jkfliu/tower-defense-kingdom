@@ -1649,6 +1649,7 @@ function renderArrow(b) {
     ctx.stroke();
   }
   ctx.lineCap = 'butt';
+
 }
 
 function renderOrb(b) {
@@ -1759,8 +1760,8 @@ function drawWavePreview() {
   const nextWave = wave + 1;
   if (nextWave > wavesInLevel() || wavePreviewDismissed) return;
 
-  const enemyType = nextWave;
-  const enemyName = ENEMY_NAMES[enemyType] || 'Enemies';
+  const pool      = LEVEL_ENEMY_POOL[currentLevel] || [1];
+  const enemyName = pool.map(t => ENEMY_NAMES[t]).join(' & ');
   const hp        = ENEMY_BASE_HP + (nextWave - 1) * ENEMY_HP_SCALE;
   const speed     = (ENEMY_BASE_SPEED + (nextWave - 1) * ENEMY_SPEED_SCALE).toFixed(1);
   const count     = enemiesPerWave();
@@ -1796,8 +1797,8 @@ function drawWavePreview() {
   ctx.textBaseline = 'middle';
   ctx.fillText('×', cx_, cy_);
 
-  // Mini enemy silhouette
-  const c  = ENEMY_COLORS[enemyType];
+  // Mini enemy silhouette — use first type in pool
+  const c  = ENEMY_COLORS[pool[0]];
   const ex = px + 22, ey = py + 42, er = 10;
   ctx.fillStyle = c.body;
   ctx.beginPath(); ctx.arc(ex, ey + 2, er * 0.75, 0, Math.PI * 2); ctx.fill();

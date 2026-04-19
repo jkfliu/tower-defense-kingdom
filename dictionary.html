@@ -282,8 +282,8 @@ const ENEMY_CANVAS_SIZE = 110;
 function drawEnemyCard(type) {
   const { canvas: c, ctx: ectx } = makeOffscreenCtx(ENEMY_CANVAS_SIZE, ENEMY_CANVAS_SIZE);
 
-  const hp = ENEMY_BASE_HP + (type - 1) * ENEMY_HP_SCALE;
-  const speed = ENEMY_BASE_SPEED + (type - 1) * ENEMY_SPEED_SCALE;
+  const hp = (ENEMY_BASE_HP + (type - 1) * ENEMY_HP_SCALE) * ENEMY_HP_MOD[type];
+  const speed = (ENEMY_BASE_SPEED + (type - 1) * ENEMY_SPEED_SCALE) * ENEMY_SPEED_MOD[type];
 
   const e = {
     type,
@@ -328,8 +328,8 @@ const waveNames = ENEMY_NAMES.slice(1); // skip null at index 0
 
 waveNames.forEach((name, i) => {
   const type = i + 1;
-  const hp    = ENEMY_BASE_HP + (type - 1) * ENEMY_HP_SCALE;
-  const speed = ((ENEMY_BASE_SPEED + (type - 1) * ENEMY_SPEED_SCALE) / CELL).toFixed(1);
+  const hp    = Math.round((ENEMY_BASE_HP + (type - 1) * ENEMY_HP_SCALE) * ENEMY_HP_MOD[type]);
+  const speed = (((ENEMY_BASE_SPEED + (type - 1) * ENEMY_SPEED_SCALE) * ENEMY_SPEED_MOD[type]) / CELL).toFixed(1);
 
   const card = document.createElement('div');
   card.className = 'enemy-card';

@@ -6,6 +6,8 @@
 //   cx, cy, turrets, enemies, bullets, particles, wave, score, gold,
 //   pathSet, ROWS, COLS, playArrowShot, playMagicShot, playExplosion, ENEMY_COLORS.
 
+const ARROW_G = 600; // gravity applied to arrows; must match arc calc in updateTurrets
+
 function makeTurret(row, col, tier = 'basic', kind = 'arrow') {
   const cfg = getTierTable(kind)[tier];
   return {
@@ -70,19 +72,24 @@ function updateTurrets(dt) {
           });
         } else {
           playArrowShot();
-          const arcKick    = nearestDist * 3.15;
           const flightTime = nearestDist / ARROW_SPEED;
           const aimX = nearest.x + Math.cos(nearest.facing) * nearest.speed * flightTime;
           const aimY = nearest.y + Math.sin(nearest.facing) * nearest.speed * flightTime;
           const aimAngle = Math.atan2(aimY - t.y, aimX - t.x);
+          const arrowVx = Math.cos(aimAngle) * ARROW_SPEED;
+          const arrowVy = Math.sin(aimAngle) * ARROW_SPEED;
+          // Arc: upward kick so arrow follows a lob
+          const arcKick   = flightTime * ARROW_G * 0.5;
+          const arcVy0    = arrowVy - arcKick;
           bullets.push({
             x: t.x, y: t.y,
             px: t.x, py: t.y,
-            vx: Math.cos(aimAngle) * ARROW_SPEED,
-            vy: Math.sin(aimAngle) * ARROW_SPEED - arcKick,
+            vx: arrowVx,
+            vy: arcVy0,
             originX: t.x, originY: t.y,
-            targetX: aimX + (Math.random() - 0.5) * 12,
-            targetY: aimY + (Math.random() - 0.5) * 12,
+            targetX: aimX,
+            targetY: aimY,
+            target:  nearest,
             range:  t.range,
             damage: t.damage,
             kind:   'arrow',
@@ -107,35 +114,50 @@ function updateBullets(dt) {
       if (b.trail.length > maxTrail) b.trail.shift();
     }
 
-    if (b.kind === 'arrow') b.vy += 600 * dt;  // gravity for arc
+    if (b.kind === 'arrow') b.vy += ARROW_G * dt;
     b.x += b.vx * dt;
     b.y += b.vy * dt;
 
     if (b.kind === 'arrow') {
-      // Terminate when arrow has passed its target landing spot
-      const dtx = b.targetX - b.x, dty = b.targetY - b.y;
-      const dot = dtx * b.vx + dty * b.vy;
-      if (dot <= 0) { b.done = true; continue; }
-    } else {
-      // Orbs fly until they exceed range — can pass the target
-      const dx0 = b.x - b.originX, dy0 = b.y - b.originY;
-      if (dx0 * dx0 + dy0 * dy0 > b.range * b.range) { b.done = true; continue; }
-    }
-
-    for (const e of enemies) {
-      if (!e.alive) continue;
-      const dx = b.x - e.x, dy = b.y - e.y;
-      if (dx * dx + dy * dy < (ENEMY_RADIUS + HIT_RADIUS_BONUS) ** 2) {
-        e.hp -= b.damage;
-        if (e.hp <= 0) {
-          e.alive = false;
-          score += 10;
-          gold  += GOLD_PER_KILL[wave];
-          playExplosion();
-          spawnParticles(e.x, e.y);
+      const e = b.target;
+      if (e && e.alive) {
+        const dx = b.x - e.x;
+        if (dx * dx < (ENEMY_RADIUS + HIT_RADIUS_BONUS) ** 2) {
+          e.hp -= b.damage;
+          if (e.hp <= 0) {
+            e.alive = false;
+            score += 10;
+            gold  += GOLD_PER_KILL[wave];
+            playExplosion();
+            spawnParticles(e.x, e.y);
+          }
+          b.done = true;
         }
-        b.done = true;
-        break;
+      }
+      if (!b.done) {
+        const dtx = b.targetX - b.x, dty = b.targetY - b.y;
+        if (dtx * dtx + dty * dty < 100) b.done = true;
+      }
+    } else {
+      for (const e of enemies) {
+        if (!e.alive) continue;
+        const dx = b.x - e.x, dy = b.y - e.y;
+        if (dx * dx + dy * dy < (ENEMY_RADIUS + HIT_RADIUS_BONUS) ** 2) {
+          e.hp -= b.damage;
+          if (e.hp <= 0) {
+            e.alive = false;
+            score += 10;
+            gold  += GOLD_PER_KILL[wave];
+            playExplosion();
+            spawnParticles(e.x, e.y);
+          }
+          b.done = true;
+          break;
+        }
+      }
+      if (!b.done) {
+        const dx0 = b.x - b.originX, dy0 = b.y - b.originY;
+        if (dx0 * dx0 + dy0 * dy0 > b.range * b.range) b.done = true;
       }
     }
   }

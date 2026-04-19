@@ -1,8 +1,6 @@
 # Sylvan Defenders — TODO
 
 ## Gameplay depth
-- [ ] Enemy variety — fast scout (low HP) vs slow tank (high HP)
-- [ ] Vary enemy spawn timing — random intervals instead of fixed SPAWN_MS spacing
 
 ## Kingdom map & campaign
 - [ ] Enemy scaling across loops (each full loop +40% HP/speed)
@@ -25,6 +23,9 @@
 
 ### Gameplay depth
 - [x] Multiple turret types — Arrow (Archers/Rangers/Longbow) and Mage (Elven mage/wizard/sorcerer)
+- [x] Enemy variety — per-type speed/HP modifiers (Goblin fast/weak, Troll/Demon slow/tanky)
+- [x] Vary enemy spawn timing — random intervals between 600–1800ms
+- [x] Arrow arc trajectory — ballistic lob with X-axis hit detection; target-reference tracking
 - [x] Gold/economy system — starting gold, earn on kills, spend to place turrets
 - [x] Turret tiers — upgrade during game; sell for 50% refund
 - [x] Place/upgrade turrets mid-wave
@@ -43,7 +44,7 @@
 - [x] Quit to Map button during gameplay
 
 ### Feel & polish
-- [x] Wave preview panel — enemy type, count, HP, speed; closeable
+- [x] Wave preview panel — enemy types from level pool, count, HP, speed; closeable
 - [x] Enemy death particles — blood splatter with blobs, droplets, streaks
 - [x] Arrow visuals — shaft, arrowhead, 3-line fletching, shadow, arc + gravity
 - [x] Mage orb visuals — tiered: dim purple / blue glow / white pulsing aura

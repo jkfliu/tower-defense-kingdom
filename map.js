@@ -451,7 +451,7 @@ function drawMapPopup() {
   if (line) ctx.fillText(line, px + PW / 2, lineY);
 
   // Difficulty row — interactive if campaignLoop > 0, cosmetic otherwise
-  const diffY      = py + 132;
+  const diffY      = py + 108;
   const unlocked = campaignLoop > 0;
 
   ctx.fillStyle    = '#7a5018';
@@ -502,7 +502,7 @@ function drawMapPopup() {
 
   // "Begin!" button
   const BW = 110, BH = 32;
-  const bx = px + (PW - BW) / 2, by = py + PH - 48;
+  const bx = px + (PW - BW) / 2, by = py + PH - 40;
   _beginBtnRect = { x: bx, y: by, w: BW, h: BH };
   ctx.fillStyle   = '#1a5c10';
   ctx.strokeStyle = '#3a9020';
