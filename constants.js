@@ -2,12 +2,11 @@
 // All top-level game configuration. No logic — just data.
 
 // ─── Grid ─────────────────────────────────────────────────────────────────────
-const COLS = 20, ROWS = 12, CELL = 40;
+const COLS = 40, ROWS = 24, CELL = 20;
 const W    = COLS * CELL;   // 800
 const H    = ROWS * CELL;   // 480
 
 // ─── Waves ────────────────────────────────────────────────────────────────────
-const TOTAL_WAVES      = 5;
 const ENEMIES_PER_WAVE = 10;
 const SPAWN_MS         = 1000;
 
@@ -15,11 +14,13 @@ const SPAWN_MS         = 1000;
 const ENEMY_RADIUS      = Math.round(CELL * 0.27);
 const ENEMY_BASE_HP     = 50;
 const ENEMY_HP_SCALE    = 30;
-const ENEMY_BASE_SPEED  = 1.8;   // cells/sec
-const ENEMY_SPEED_SCALE = 0.35;
+const ENEMY_BASE_SPEED  = 1.8 * CELL;   // px/sec
+const ENEMY_SPEED_SCALE = 0.35 * CELL;  // px/sec per wave
+const ENEMY_NAMES       = [null, 'Goblins', 'Orcs', 'Trolls', 'Dark Elves', 'Demons'];
 
 // ─── Bullets & combat ─────────────────────────────────────────────────────────
-const BULLET_SPEED     = 420;   // px/s
+const ARROW_SPEED      = 420;   // px/s
+const ORB_SPEED        = 320;   // px/s — orbs travel slower than arrows
 const HIT_RADIUS_BONUS = 3;     // extra px for bullet hit detection
 const PARTICLE_COUNT   = 8;
 
@@ -31,10 +32,18 @@ const STARTING_GOLD  = 100;
 const GOLD_PER_KILL  = [null, 8, 12, 18, 25, 35];  // 1-based wave index
 
 // ─── Path ─────────────────────────────────────────────────────────────────────
-const MIN_PATH_CELLS = 30;    // ~25% canvas coverage minimum
+const MIN_PATH_LENGTH   = 60 * CELL;  // ~25% canvas coverage minimum
+const PATH_BLOCK_RADIUS  = CELL * 0.5; // grid cells within this px distance of any segment are blocked
+const PATH_RENDER_RADIUS = CELL * 1.0;  // visual half-width of the path stroke
 
-// ─── Mage bullet speed ────────────────────────────────────────────────────────
-const MAGE_BULLET_SPEED = 320;  // px/s — orbs travel slower than arrows
+// ─── Campaign ─────────────────────────────────────────────────────────────────
+const CAMPAIGN_LEVELS = [
+  { id: 0, name: 'Forest Outpost',  x: 90,  y: 260, icon: 'forest',   startGold: 100 },
+  { id: 1, name: 'River Crossing',  x: 230, y: 175, icon: 'river',    startGold: 120 },
+  { id: 2, name: 'Mountain Pass',   x: 390, y: 215, icon: 'mountain', startGold: 140 },
+  { id: 3, name: 'Ruined Village',  x: 560, y: 270, icon: 'village',  startGold: 160 },
+  { id: 4, name: 'Castle Siege',    x: 700, y: 170, icon: 'castle',   startGold: 180 },
+];
 
 // ─── Tower tiers ──────────────────────────────────────────────────────────────
 const TIER_ORDER = ['basic', 'advanced', 'ultimate'];

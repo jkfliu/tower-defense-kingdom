@@ -29,13 +29,17 @@ canvas.addEventListener('mousemove', e => {
 canvas.addEventListener('mouseleave', () => { hoverCell = null; });
 
 canvas.addEventListener('click', e => {
-  if (phase !== 'placing' && phase !== 'between' && phase !== 'wave') return;
   const rect = canvas.getBoundingClientRect();
   const mx  = e.clientX - rect.left;
   const my  = e.clientY - rect.top;
+
+  if (phase === 'map') { handleMapClick(mx, my); return; }
+  if (phase !== 'placing' && phase !== 'between' && phase !== 'wave') return;
+
   const col = Math.floor(mx / CELL);
   const row = Math.floor(my / CELL);
 
+  if (handleWavePreviewClick(mx, my)) return;
   if (turretPopup) { handleTurretPopupClick(mx, my); return; }
   if (tierPopup)   { handleTierPopupClick(mx, my);   return; }
   handleCellClick(row, col);
@@ -47,7 +51,7 @@ function handleCellClick(row, col) {
     const cellX = existing.col * CELL;
     const px = (cellX + CELL + POPUP_W > W) ? cellX - POPUP_W : cellX + CELL;
     const py = Math.min(existing.row * CELL, H - getTurretPopupHeight(existing));
-    turretPopup         = { turret: existing, px, py };
+    turretPopup         = { turret: existing, px, py, w: 240 };
     turretPopupHoverIdx = -1;
     return;
   }
@@ -124,10 +128,10 @@ function hideOverlay() {
 }
 
 function updateHUD() {
-  document.getElementById('wave-val').textContent  = `${wave} / ${TOTAL_WAVES}`;
-  document.getElementById('lives-val').textContent = lives;
+  document.getElementById('wave-val').textContent  = phase === 'map' ? '—' : `${wave} / ${wavesInLevel()}`;
+  document.getElementById('lives-val').textContent = phase === 'map' ? '—' : lives;
   document.getElementById('score-val').textContent = score;
-  document.getElementById('gold-val').textContent  = gold;
+  document.getElementById('gold-val').textContent  = phase === 'map' ? '—' : gold;
 }
 
 // ─── Button event listeners ───────────────────────────────────────────────────
@@ -151,7 +155,16 @@ document.getElementById('start-btn').addEventListener('click', () => {
 document.getElementById('new-game-btn').addEventListener('click', initGame);
 
 document.getElementById('action-btn').addEventListener('click', () => {
-  if (phase === 'lose' || phase === 'win') initGame();
+  if (phase === 'lose') {
+    // Return to map so player can retry the same level
+    phase = 'map';
+    setStartButton('', ['dimmed']);
+    canvas.classList.remove('placing');
+    hideOverlay();
+    updateHUD();
+  } else if (phase === 'win') {
+    initGame();
+  }
 });
 
 // ─── Wave & init ──────────────────────────────────────────────────────────────
@@ -172,8 +185,8 @@ function startWave() {
 }
 
 function initGame() {
-  path      = generatePath();
-  pathSet   = new Set(path.map(c => `${c.row},${c.col}`));
+  currentLevel = 0;
+  campaignLoop    = 0;
   turrets   = [];
   enemies   = [];
   bullets   = [];
@@ -181,8 +194,8 @@ function initGame() {
   wave  = 0;
   lives = 3;
   score = 0;
-  gold  = STARTING_GOLD;
-  phase = 'placing';
+  gold  = 0;
+  phase = 'map';
   lastFrame     = 0;
   spawnedCount  = 0;
   lastSpawnTime = 0;
@@ -192,7 +205,8 @@ function initGame() {
   turretPopup         = null;
   turretPopupHoverIdx = -1;
   paused = false;
-  setStartButton('Start Game');
-  canvas.classList.add('placing');
+  setStartButton('', ['dimmed']);
+  canvas.classList.remove('placing');
   hideOverlay();
+  updateHUD();
 }

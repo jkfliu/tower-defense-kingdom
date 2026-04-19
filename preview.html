@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sylvan Defenders — Dictionary</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #1a1a2e; color: #e8d8a0; font-family: Georgia, serif; padding: 24px; }
+    h1 { text-align: center; font-size: 28px; color: #e8c060; margin-bottom: 8px; letter-spacing: 2px; }
+    .subtitle { text-align: center; color: #a09060; font-size: 13px; margin-bottom: 32px; }
+    h2 { font-size: 20px; color: #c8a840; border-bottom: 1px solid #5a4020; padding-bottom: 8px; margin: 32px 0 16px; letter-spacing: 1px; }
+    h3 { font-size: 14px; color: #d0b870; margin-bottom: 6px; text-align: center; }
+
+    .grid { display: flex; flex-wrap: wrap; gap: 16px; }
+
+    /* Level cards */
+    .level-card {
+      background: #2a2010;
+      border: 1px solid #5a4020;
+      border-radius: 8px;
+      padding: 12px;
+      width: 420px;
+    }
+    .level-card canvas { display: block; border-radius: 4px; }
+    .level-meta { font-size: 12px; color: #a09060; margin-top: 8px; display: flex; gap: 16px; }
+
+    /* Tower cards */
+    .tower-card {
+      background: #2a2010;
+      border: 1px solid #5a4020;
+      border-radius: 8px;
+      padding: 12px;
+      width: 160px;
+      text-align: center;
+    }
+    .tower-card canvas { display: block; margin: 0 auto; border-radius: 4px; }
+    .tower-stats { font-size: 11px; color: #a09060; margin-top: 6px; line-height: 1.7; text-align: left; }
+    .tower-stats span { color: #e8d0a0; }
+
+    /* Enemy cards */
+    .enemy-card {
+      background: #2a2010;
+      border: 1px solid #5a4020;
+      border-radius: 8px;
+      padding: 12px;
+      width: 140px;
+      text-align: center;
+    }
+    .enemy-card canvas { display: block; margin: 0 auto; border-radius: 4px; }
+    .enemy-stats { font-size: 11px; color: #a09060; margin-top: 6px; line-height: 1.7; text-align: left; }
+    .enemy-stats span { color: #e8d0a0; }
+
+    .tier-label {
+      display: inline-block;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      margin-bottom: 6px;
+    }
+    .tier-basic    { background: #3a3020; color: #c8b060; border: 1px solid #7a6030; }
+    .tier-advanced { background: #3a1010; color: #e06040; border: 1px solid #8a3020; }
+    .tier-ultimate { background: #302010; color: #e8a820; border: 1px solid #9a6010; }
+
+    a.back { display: inline-block; margin-bottom: 24px; color: #c8a840; text-decoration: none; font-size: 13px; }
+    a.back:hover { color: #e8d060; }
+  </style>
+</head>
+<body>
+
+<a class="back" href="index.html">← Back to game</a>
+<h1>Sylvan Defenders</h1>
+<p class="subtitle">Game Dictionary — Levels · Towers · Enemies</p>
+
+<h2>⚔ Levels</h2>
+<div class="grid" id="levels-grid"></div>
+
+<h2>🏰 Towers</h2>
+<div class="grid" id="towers-grid"></div>
+
+<h2>👹 Enemies</h2>
+<div class="grid" id="enemies-grid"></div>
+
+<!-- Load game modules (no game.js — we bootstrap manually) -->
+<script src="constants.js"></script>
+<script src="path.js"></script>
+<script src="theme.js"></script>
+
+<script>
+// ─── Minimal stubs so theme.js draw functions don't crash ────────────────────
+const randInt = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
+const cx = col => col * CELL + CELL / 2;
+const cy = row => row * CELL + CELL / 2;
+
+// These globals are read by drawEnemy / drawArcherTower / drawMageTower
+let ctx, path, pathSet, pathRenderSet;
+let turrets = [], enemies = [], bullets = [], particles = [];
+let wave = 1, lives = 3, score = 0, gold = 100, phase = 'placing';
+let hoverCell = null, tierPopup = null, popupHoverIdx = -1;
+let turretPopup = null, turretPopupHoverIdx = -1;
+let wavePreviewDismissed = true;
+let paused = false;
+
+function isValidPlacement() { return true; }
+function updateHUD() {}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function makeOffscreenCtx(w, h) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  return { canvas: c, ctx: c.getContext('2d') };
+}
+
+function withCtx(newCtx, fn) {
+  const prev = ctx;
+  ctx = newCtx;
+  fn();
+  ctx = prev;
+}
+
+// ─── LEVELS ──────────────────────────────────────────────────────────────────
+
+const PREVIEW_W = 400, PREVIEW_H = 240;
+const scaleX = PREVIEW_W / W, scaleY = PREVIEW_H / H;
+
+function drawLevelPreview(levelId) {
+  const { canvas: c, ctx: lctx } = makeOffscreenCtx(PREVIEW_W, PREVIEW_H);
+
+  // Set up path globals
+  const wp = CAMPAIGN_LEVEL_WAYPOINTS[levelId];
+  path          = wp;
+  pathSet       = buildPathSet(wp, PATH_BLOCK_RADIUS);
+  pathRenderSet = buildPathSet(wp, PATH_RENDER_RADIUS);
+
+  withCtx(lctx, () => {
+    lctx.save();
+    lctx.scale(scaleX, scaleY);
+
+    // Grass background
+    lctx.fillStyle = '#4a7a24';
+    lctx.fillRect(0, 0, W, H);
+
+    // Path
+    const R = PATH_RENDER_RADIUS;
+    const D = R * 2;
+    lctx.strokeStyle = '#6a3e10';
+    lctx.lineWidth = D + 4;
+    lctx.lineCap = lctx.lineJoin = 'round';
+    lctx.beginPath();
+    lctx.moveTo(path[0].x, path[0].y);
+    for (let i = 1; i < path.length; i++) lctx.lineTo(path[i].x, path[i].y);
+    lctx.stroke();
+
+    lctx.strokeStyle = '#c8a05a';
+    lctx.lineWidth = D;
+    lctx.beginPath();
+    lctx.moveTo(path[0].x, path[0].y);
+    for (let i = 1; i < path.length; i++) lctx.lineTo(path[i].x, path[i].y);
+    lctx.stroke();
+
+    lctx.strokeStyle = 'rgba(255,220,140,0.18)';
+    lctx.lineWidth = D * 0.45;
+    lctx.beginPath();
+    lctx.moveTo(path[0].x, path[0].y);
+    for (let i = 1; i < path.length; i++) lctx.lineTo(path[i].x, path[i].y);
+    lctx.stroke();
+
+    // Start dot (green) and end dot (red)
+    const p0 = path[0], pN = path[path.length - 1];
+    for (const [px, py, col] of [[p0.x, p0.y, '#22cc22'], [pN.x, pN.y, '#cc2222']]) {
+      lctx.fillStyle = col;
+      lctx.beginPath();
+      lctx.arc(px, py, 14, 0, Math.PI * 2);
+      lctx.fill();
+      lctx.strokeStyle = '#fff';
+      lctx.lineWidth = 2;
+      lctx.stroke();
+    }
+
+    lctx.restore();
+
+    // Labels
+    lctx.fillStyle = '#fff';
+    lctx.font = 'bold 11px sans-serif';
+    lctx.textAlign = 'center';
+    lctx.fillText('START', p0.x * scaleX, p0.y * scaleY - 12);
+    lctx.fillText('END',   pN.x * scaleX, pN.y * scaleY - 12);
+  });
+
+  return c;
+}
+
+const levelsGrid = document.getElementById('levels-grid');
+CAMPAIGN_LEVELS.forEach(lv => {
+  const card = document.createElement('div');
+  card.className = 'level-card';
+
+  const h3 = document.createElement('h3');
+  h3.textContent = `${lv.id + 1}. ${lv.name}`;
+  card.appendChild(h3);
+
+  card.appendChild(drawLevelPreview(lv.id));
+
+  const meta = document.createElement('div');
+  meta.className = 'level-meta';
+  meta.innerHTML = `<span>Starting gold: <strong>${lv.startGold}</strong></span><span>Waves: <strong>${lv.id + 1}</strong></span>`;
+  card.appendChild(meta);
+
+  levelsGrid.appendChild(card);
+});
+
+// ─── TOWERS ──────────────────────────────────────────────────────────────────
+
+const TOWER_CANVAS_SIZE = 130;
+
+function drawTowerCard(kind, tier) {
+  const { canvas: c, ctx: tctx } = makeOffscreenCtx(TOWER_CANVAS_SIZE, TOWER_CANVAS_SIZE);
+  const cfg = getTierTable(kind)[tier];
+  const sc  = TIER_SCALE[tier] || 0.8;
+
+  const t = {
+    x: TOWER_CANVAS_SIZE / 2,
+    y: TOWER_CANVAS_SIZE / 2 + 10,
+    tier, kind,
+    angle: -Math.PI / 2,
+    fireAnim: 0,
+    range: cfg.range * CELL,
+    damage: cfg.damage,
+    fireRate: cfg.fireRate,
+    originalCost: cfg.cost,
+  };
+
+  withCtx(tctx, () => {
+    tctx.fillStyle = '#3a5a1e';
+    tctx.fillRect(0, 0, TOWER_CANVAS_SIZE, TOWER_CANVAS_SIZE);
+    if (kind === 'mage') drawMageTower(t, sc);
+    else drawArcherTower(t, sc);
+  });
+
+  return c;
+}
+
+const towersGrid = document.getElementById('towers-grid');
+
+for (const kind of ['arrow', 'mage']) {
+  const tiers = getTierTable(kind);
+  for (const tier of TIER_ORDER) {
+    const cfg = tiers[tier];
+    const card = document.createElement('div');
+    card.className = 'tower-card';
+
+    const tierSpan = document.createElement('span');
+    tierSpan.className = `tier-label tier-${tier}`;
+    tierSpan.textContent = tier.charAt(0).toUpperCase() + tier.slice(1);
+    card.appendChild(tierSpan);
+
+    const h3 = document.createElement('h3');
+    h3.textContent = cfg.label;
+    card.appendChild(h3);
+
+    card.appendChild(drawTowerCard(kind, tier));
+
+    const stats = document.createElement('div');
+    stats.className = 'tower-stats';
+    stats.innerHTML = `
+      Cost: <span>${cfg.cost}g</span><br>
+      Damage: <span>${cfg.damage}</span><br>
+      Fire rate: <span>${cfg.fireRate}/s</span><br>
+      Range: <span>${cfg.range} cells</span>
+    `;
+    card.appendChild(stats);
+
+    towersGrid.appendChild(card);
+  }
+}
+
+// ─── ENEMIES ─────────────────────────────────────────────────────────────────
+
+const ENEMY_CANVAS_SIZE = 110;
+
+function drawEnemyCard(type) {
+  const { canvas: c, ctx: ectx } = makeOffscreenCtx(ENEMY_CANVAS_SIZE, ENEMY_CANVAS_SIZE);
+
+  const hp = ENEMY_BASE_HP + (type - 1) * ENEMY_HP_SCALE;
+  const speed = ENEMY_BASE_SPEED + (type - 1) * ENEMY_SPEED_SCALE;
+
+  const e = {
+    type,
+    x: ENEMY_CANVAS_SIZE / 2,
+    y: ENEMY_CANVAS_SIZE / 2 + 6,
+    facing: 0,
+    dist: 0,
+    hp, maxHp: hp,
+    alive: true,
+  };
+
+  withCtx(ectx, () => {
+    ectx.fillStyle = '#3a5a1e';
+    ectx.fillRect(0, 0, ENEMY_CANVAS_SIZE, ENEMY_CANVAS_SIZE);
+
+    // Draw enemy facing right (east)
+    const facing = 0;
+    const absSin = Math.abs(Math.sin(facing));
+    const scaleY = 1 - absSin * 0.22;
+
+    ectx.save();
+    ectx.translate(e.x, e.y);
+    ectx.rotate(facing - Math.PI / 2);
+    ectx.scale(1, scaleY);
+
+    const ep = { ...e, x: 0, y: 0 };
+    switch (type) {
+      case 1: drawGoblin(ep);  break;
+      case 2: drawOrc(ep);     break;
+      case 3: drawTroll(ep);   break;
+      case 4: drawDarkElf(ep); break;
+      case 5: drawDemon(ep);   break;
+    }
+    ectx.restore();
+  });
+
+  return c;
+}
+
+const enemiesGrid = document.getElementById('enemies-grid');
+const waveNames = ENEMY_NAMES.slice(1); // skip null at index 0
+
+waveNames.forEach((name, i) => {
+  const type = i + 1;
+  const hp    = ENEMY_BASE_HP + (type - 1) * ENEMY_HP_SCALE;
+  const speed = ((ENEMY_BASE_SPEED + (type - 1) * ENEMY_SPEED_SCALE) / CELL).toFixed(1);
+
+  const card = document.createElement('div');
+  card.className = 'enemy-card';
+
+  const h3 = document.createElement('h3');
+  h3.textContent = name;
+  card.appendChild(h3);
+
+  card.appendChild(drawEnemyCard(type));
+
+  const stats = document.createElement('div');
+  stats.className = 'enemy-stats';
+  stats.innerHTML = `
+    Wave: <span>${type}</span><br>
+    HP: <span>${hp}</span><br>
+    Speed: <span>${speed} cells/s</span><br>
+    Gold: <span>${GOLD_PER_KILL[type]}g</span>
+  `;
+  card.appendChild(stats);
+
+  enemiesGrid.appendChild(card);
+});
+</script>
+</body>
+</html>

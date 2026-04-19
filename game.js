@@ -15,12 +15,21 @@ const cy = row => row * CELL + CELL / 2;   // cell-centre y
 
 // ─── Game state ───────────────────────────────────────────────────────────────
 // Declared here; initialised (and reset) in initGame() in ui.js.
-let path, pathSet;
+let path, pathSet, pathRenderSet;
 let turrets, enemies, bullets, particles;
 let wave, lives, score, gold, phase;
 let spawnedCount, lastSpawnTime, lastFrame;
 let paused = false;
 let hoverCell = null;           // {row, col} under mouse, or null
+
+// Campaign state
+let currentLevel = 0;
+let campaignLoop    = 0;
+
+// UI state
+let wavePreviewDismissed = false;
+
+function wavesInLevel() { return currentLevel + 1; }
 
 // Popup state
 let tierPopup           = null; // { row, col, px, py } — new-turret popup
@@ -49,14 +58,12 @@ function gameLoop(ts) {
     if (lives <= 0) {
       phase = 'lose';
       bullets = [];
-      setStartButton('Start Game', ['dimmed']);
-      showOverlay('Game Over', 'Play Again', `Score: ${score}`);
+      setStartButton('', ['dimmed']);
+      showOverlay('Defeated!', 'Try Again', `Score: ${score}`);
     } else if (spawnedCount >= ENEMIES_PER_WAVE && enemies.length === 0 && particles.length === 0) {
       bullets = [];
-      if (wave >= TOTAL_WAVES) {
-        phase = 'win';
-        setStartButton('Start Game', ['dimmed']);
-        showOverlay('You win!', 'Play Again', `Score: ${score}`);
+      if (wave >= wavesInLevel()) {
+        completeLevel();
       } else {
         phase = 'between';
         canvas.classList.add('placing');
@@ -66,7 +73,11 @@ function gameLoop(ts) {
     }
   }
 
-  render();
+  if (phase === 'map') {
+    drawKingdomMap();
+  } else {
+    render();
+  }
   requestAnimationFrame(gameLoop);
 }
 

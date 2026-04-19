@@ -18,7 +18,7 @@ const ENEMY_COLORS = [
 
 // ─── Tower draw constants ─────────────────────────────────────────────────────
 // TIER_ORDER is defined in constants.js
-const TIER_SCALE = { basic: 0.8, advanced: 0.88, ultimate: 0.96 };
+const TIER_SCALE = { basic: 1.2, advanced: 1.32, ultimate: 1.44 };
 
 const TOWER_FACE  = { basic: '#c8a87a', advanced: '#a09080', ultimate: '#787068' };
 const TOWER_SIDE  = { basic: '#9a7850', advanced: '#706858', ultimate: '#504840' };
@@ -59,10 +59,55 @@ function drawSimpleEyes(x, y, r, c) {
   ctx.beginPath(); ctx.arc(x + r * 0.26, y, r * 0.05, 0, Math.PI * 2); ctx.fill();
 }
 
+// Shared walking legs — call before drawing body so legs appear behind
+// hipY: y-coordinate of hip joint; legLen: upper+lower leg length; sw: leg thickness
+// skinColor, darkColor: fill/stroke colours matching the enemy
+function drawLegs(e, hipX, hipY, legLen, sw, darkColor) {
+  const phase = (e.dist / (CELL * 0.55)) * Math.PI;
+
+  ctx.strokeStyle = darkColor;
+  ctx.lineCap = 'round';
+
+  // side=-1 (left) and side=1 (right), offset by PI so they alternate
+  for (let side = -1; side <= 1; side += 2) {
+    const legPhase = phase + (side === 1 ? Math.PI : 0);
+    const a  = Math.sin(legPhase) * 0.42;
+    const hipOffX = hipX + side * legLen * 0.28;   // hip spaced left/right
+    const kx = hipOffX + Math.sin(a) * legLen;
+    const ky = hipY    + Math.cos(Math.abs(a)) * legLen;
+    const fx = kx  + Math.sin(a * 0.5) * legLen * 0.7;
+    const fy = ky  + legLen * 0.65;
+
+    // thigh
+    ctx.lineWidth = sw;
+    ctx.beginPath();
+    ctx.moveTo(hipOffX, hipY);
+    ctx.lineTo(kx, ky);
+    ctx.stroke();
+
+    // shin
+    ctx.lineWidth = sw * 0.7;
+    ctx.beginPath();
+    ctx.moveTo(kx, ky);
+    ctx.lineTo(fx, fy);
+    ctx.stroke();
+
+    // foot
+    ctx.lineWidth = sw * 0.6;
+    ctx.beginPath();
+    ctx.moveTo(fx, fy);
+    ctx.lineTo(fx + Math.sign(a) * legLen * 0.35, fy + legLen * 0.08);
+    ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+}
+
 // Wave 1 — Goblin: hunched, pointy ears, stubby arms, toothy grin
 function drawGoblin(e) {
   const x = e.x, y = e.y, r = CELL * 0.27;
   const c = ENEMY_COLORS[1];
+
+  drawLegs(e, x, y + r * 0.55, r * 0.62, r * 0.22, c.dark);
 
   // Ground shadow
   ctx.globalAlpha = 0.2;
@@ -130,14 +175,14 @@ function drawGoblin(e) {
     ctx.lineTo(x + r * (0.1 + tx + 0.07), y - r * 0.18);
     ctx.closePath(); ctx.fill();
   }
-
-  drawEnemyHpBar(e);
 }
 
 // Wave 2 — Orc: wide stocky body, tusks, heavy brow
 function drawOrc(e) {
   const x = e.x, y = e.y, r = CELL * 0.27;
   const c = ENEMY_COLORS[2];
+
+  drawLegs(e, x, y + r * 0.75, r * 0.55, r * 0.3, c.dark);
 
   ctx.globalAlpha = 0.2;
   ctx.fillStyle = '#000';
@@ -193,14 +238,14 @@ function drawOrc(e) {
   ctx.beginPath();
   ctx.arc(x, y - r * 0.28, r * 0.32, Math.PI + 0.3, -0.3);
   ctx.stroke();
-
-  drawEnemyHpBar(e);
 }
 
 // Wave 3 — Troll: tall stooped body, long dangling arms, warty, angry
 function drawTroll(e) {
   const x = e.x, y = e.y, r = CELL * 0.27;
   const c = ENEMY_COLORS[3];
+
+  drawLegs(e, x, y + r * 0.9, r * 0.72, r * 0.28, c.dark);
 
   ctx.globalAlpha = 0.22;
   ctx.fillStyle = '#000';
@@ -258,14 +303,14 @@ function drawTroll(e) {
   ctx.beginPath();
   ctx.arc(x, y - r * 0.68, r * 0.3, Math.PI + 0.4, -0.4);
   ctx.stroke();
-
-  drawEnemyHpBar(e);
 }
 
 // Wave 4 — Dark Elf: slim, hooded cloak, glowing eyes, dagger
 function drawDarkElf(e) {
   const x = e.x, y = e.y, r = CELL * 0.27;
   const c = ENEMY_COLORS[4];
+
+  drawLegs(e, x, y + r * 0.75, r * 0.58, r * 0.18, '#1a0e04');
 
   ctx.globalAlpha = 0.18;
   ctx.fillStyle = '#000';
@@ -337,14 +382,14 @@ function drawDarkElf(e) {
   ctx.lineTo(x + r * 0.82, y + r * 0.15);
   ctx.stroke();
   ctx.lineCap = 'butt';
-
-  drawEnemyHpBar(e);
 }
 
 // Wave 5 — Demon: horns, bat wings, forked tail, flame eyes
 function drawDemon(e) {
   const x = e.x, y = e.y, r = CELL * 0.27;
   const c = ENEMY_COLORS[5];
+
+  drawLegs(e, x, y + r * 0.7, r * 0.65, r * 0.26, c.dark);
 
   ctx.globalAlpha = 0.28;
   ctx.fillStyle = '#400000';
@@ -376,18 +421,50 @@ function drawDemon(e) {
   ctx.roundRect(x - r * 0.72, y - r * 0.4, r * 1.44, r * 1.2, r * 0.18);
   ctx.fill(); ctx.stroke();
 
-  // Forked tail
-  ctx.strokeStyle = c.dark;
-  ctx.lineWidth = r * 0.18;
-  ctx.lineCap = 'round';
+  // Forked tail — thick tapered shaft in bright orange, barbed fork tips
+  const tx0 = x + r * 0.1,  ty0 = y + r * 0.75;   // base (behind body)
+  const tcx = x + r * 0.44, tcy = y + r * 1.31;    // curve control
+  const tx1 = x + r * 0.22, ty1 = y + r * 1.50;    // fork point
+
+  // Thick base gradient shaft
+  const tailGrad = ctx.createLinearGradient(tx0, ty0, tx1, ty1);
+  tailGrad.addColorStop(0, '#ff8800');
+  tailGrad.addColorStop(1, '#cc3300');
+  ctx.strokeStyle = tailGrad;
+  ctx.lineWidth   = r * 0.32;
+  ctx.lineCap     = 'round';
   ctx.beginPath();
-  ctx.moveTo(x, y + r * 0.8);
-  ctx.quadraticCurveTo(x + r * 0.3, y + r * 1.5, x + r * 0.1, y + r * 1.8);
+  ctx.moveTo(tx0, ty0);
+  ctx.quadraticCurveTo(tcx, tcy, tx1, ty1);
   ctx.stroke();
-  ctx.lineWidth = r * 0.12;
-  ctx.beginPath(); ctx.moveTo(x + r * 0.1, y + r * 1.8); ctx.lineTo(x - r * 0.2, y + r * 2.1); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(x + r * 0.1, y + r * 1.8); ctx.lineTo(x + r * 0.35, y + r * 2.1); ctx.stroke();
-  ctx.lineCap = 'butt';
+
+  // Thinner outline for definition
+  ctx.strokeStyle = '#801000';
+  ctx.lineWidth   = r * 0.32 + 1.5;
+  ctx.globalAlpha = 0.35;
+  ctx.beginPath();
+  ctx.moveTo(tx0, ty0);
+  ctx.quadraticCurveTo(tcx, tcy, tx1, ty1);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // Barbed fork — solid filled triangles
+  ctx.fillStyle   = '#ff6600';
+  ctx.strokeStyle = '#801000';
+  ctx.lineWidth   = 0.8;
+  ctx.lineCap     = 'butt';
+  // left barb
+  ctx.beginPath();
+  ctx.moveTo(tx1, ty1);
+  ctx.lineTo(tx1 - r * 0.27, ty1 + r * 0.32);
+  ctx.lineTo(tx1 - r * 0.08, ty1 + r * 0.07);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  // right barb
+  ctx.beginPath();
+  ctx.moveTo(tx1, ty1);
+  ctx.lineTo(tx1 + r * 0.20, ty1 + r * 0.34);
+  ctx.lineTo(tx1 + r * 0.06, ty1 + r * 0.06);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
 
   // Head
   ctx.fillStyle = c.body;
@@ -437,19 +514,31 @@ function drawDemon(e) {
     ctx.lineTo(x + r * (fx + 0.07), y + r * (fy + 0.15));
     ctx.closePath(); ctx.fill();
   }
-
-  drawEnemyHpBar(e);
 }
 
 function drawEnemy(e) {
+  const facing = e.facing || 0;
+
+  // Perspective squash: enemies moving vertically appear shallower
+  const absSin = Math.abs(Math.sin(facing));
+  const scaleY = 1 - absSin * 0.22;   // 1.0 when horizontal, ~0.78 when vertical
+
+  ctx.save();
+  ctx.translate(e.x, e.y);
+  ctx.rotate(facing - Math.PI / 2);   // -90° so "up" in draw space = facing direction
+  ctx.scale(1, scaleY);
+
+  const ep = { ...e, x: 0, y: 0 };
   switch (e.type) {
-    case 1: drawGoblin(e);   break;
-    case 2: drawOrc(e);      break;
-    case 3: drawTroll(e);    break;
-    case 4: drawDarkElf(e);  break;
-    case 5: drawDemon(e);    break;
-    default: drawGoblin(e);  break;
+    case 1: drawGoblin(ep);   break;
+    case 2: drawOrc(ep);      break;
+    case 3: drawTroll(ep);    break;
+    case 4: drawDarkElf(ep);  break;
+    case 5: drawDemon(ep);    break;
+    default: drawGoblin(ep);  break;
   }
+  ctx.restore();
+  drawEnemyHpBar(e);
 }
 
 // ─── Path drawing ─────────────────────────────────────────────────────────────
@@ -489,101 +578,85 @@ function drawGrassBlade(rx, ry, ndx, ndy, lean, h, w, color) {
 }
 
 function drawSmoothPath() {
-  const pathCells = new Set(path.map(c => `${c.row},${c.col}`));
+  const R = PATH_RENDER_RADIUS;
+  const D = R * 2;
 
-  const NEIGHBOURS = [
-    { dr: -1, dc:  0, side: 0, ndx:  0, ndy:  1 },
-    { dr:  1, dc:  0, side: 1, ndx:  0, ndy: -1 },
-    { dr:  0, dc: -1, side: 2, ndx:  1, ndy:  0 },
-    { dr:  0, dc:  1, side: 3, ndx: -1, ndy:  0 },
-  ];
+  // ── Dark edge outline ──
+  ctx.strokeStyle = '#6a3e10';
+  ctx.lineWidth   = D + 4;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+  ctx.beginPath();
+  ctx.moveTo(path[0].x, path[0].y);
+  for (let i = 1; i < path.length; i++) ctx.lineTo(path[i].x, path[i].y);
+  ctx.stroke();
 
-  // ── Dirt tiles ──
-  for (const { row, col } of path) {
-    const x = col * CELL, y = row * CELL;
+  // ── Main dirt fill ──
+  ctx.strokeStyle = '#c8a05a';
+  ctx.lineWidth   = D;
+  ctx.beginPath();
+  ctx.moveTo(path[0].x, path[0].y);
+  for (let i = 1; i < path.length; i++) ctx.lineTo(path[i].x, path[i].y);
+  ctx.stroke();
 
-    ctx.fillStyle = (row + col) % 2 === 0 ? '#c8a05a' : '#bc9850';
-    ctx.fillRect(x, y, CELL, CELL);
+  // ── Centre highlight ──
+  ctx.strokeStyle = 'rgba(255,220,140,0.18)';
+  ctx.lineWidth   = D * 0.45;
+  ctx.beginPath();
+  ctx.moveTo(path[0].x, path[0].y);
+  for (let i = 1; i < path.length; i++) ctx.lineTo(path[i].x, path[i].y);
+  ctx.stroke();
 
-    // Top highlight
-    ctx.fillStyle = 'rgba(255, 220, 140, 0.18)';
-    ctx.fillRect(x, y, CELL, CELL * 0.4);
-
-    // Horizontal grain lines
-    ctx.strokeStyle = 'rgba(100, 65, 20, 0.12)';
-    ctx.lineWidth = 0.5;
-    for (let dy = CELL * 0.25; dy < CELL; dy += CELL * 0.22) {
-      ctx.beginPath();
-      ctx.moveTo(x + 2, y + dy);
-      ctx.lineTo(x + CELL - 2, y + dy);
-      ctx.stroke();
-    }
-
-    // Dirt specks
-    for (let i = 0; i < 4; i++) {
-      const sx = x + cellRng(row * 71 + col * 37 + i, 11) * (CELL - 4) + 2;
-      const sy = y + cellRng(row * 71 + col * 37 + i, 22) * (CELL - 4) + 2;
-      const sr = 0.8 + cellRng(row * 71 + col * 37 + i, 33) * 1.2;
-      const sa = 0.12 + cellRng(row * 71 + col * 37 + i, 44) * 0.15;
-      ctx.fillStyle = `rgba(80, 45, 10, ${sa})`;
-      ctx.beginPath();
-      ctx.ellipse(sx, sy, sr, sr * 0.6, cellRng(row + i, col + i) * Math.PI, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Dark border on grass-facing edges
-    ctx.strokeStyle = '#6a3e10';
-    ctx.lineWidth   = 1.5;
-    for (const { dr, dc, side } of NEIGHBOURS) {
-      if (pathCells.has(`${row + dr},${col + dc}`)) continue;
-      ctx.beginPath();
-      if (side === 0) { ctx.moveTo(x,        y);        ctx.lineTo(x + CELL, y); }
-      if (side === 1) { ctx.moveTo(x,        y + CELL); ctx.lineTo(x + CELL, y + CELL); }
-      if (side === 2) { ctx.moveTo(x,        y);        ctx.lineTo(x,        y + CELL); }
-      if (side === 3) { ctx.moveTo(x + CELL, y);        ctx.lineTo(x + CELL, y + CELL); }
-      ctx.stroke();
-
-      // Inner shadow gutter
-      ctx.fillStyle = 'rgba(60, 30, 0, 0.18)';
-      if (side === 0) ctx.fillRect(x,            y,            CELL, 3);
-      if (side === 1) ctx.fillRect(x,            y + CELL - 3, CELL, 3);
-      if (side === 2) ctx.fillRect(x,            y,            3,    CELL);
-      if (side === 3) ctx.fillRect(x + CELL - 3, y,            3,    CELL);
+  // ── Dirt specks scattered along path ──
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = path[i], b = path[i + 1];
+    const segLen = Math.hypot(b.x - a.x, b.y - a.y);
+    const steps  = Math.ceil(segLen / (CELL * 0.6));
+    for (let s = 0; s < steps; s++) {
+      const t   = (s + 0.5) / steps;
+      const mx  = a.x + (b.x - a.x) * t;
+      const my  = a.y + (b.y - a.y) * t;
+      const seed = i * 1000 + s;
+      for (let k = 0; k < 3; k++) {
+        const ox  = (cellRng(seed, k * 3 + 1) - 0.5) * D * 0.85;
+        const oy  = (cellRng(seed, k * 3 + 2) - 0.5) * D * 0.85;
+        const sr  = 0.8 + cellRng(seed, k * 3 + 3) * 1.4;
+        const sa  = 0.10 + cellRng(seed, k * 3 + 4) * 0.14;
+        ctx.fillStyle = `rgba(80,45,10,${sa})`;
+        ctx.beginPath();
+        ctx.ellipse(mx + ox, my + oy, sr, sr * 0.6, cellRng(seed, k) * Math.PI, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 
-  // ── Grass blades along path edges ──
-  for (const { row, col } of path) {
-    const x = col * CELL, y = row * CELL;
-    for (const { dr, dc, side, ndx, ndy } of NEIGHBOURS) {
-      if (pathCells.has(`${row + dr},${col + dc}`)) continue;
-      if (cellRng(row * 7 + col * 3, side + 50) < 0.2) continue;
+  // ── Grass blades along both edges of each segment ──
+  ctx.lineCap = 'butt';
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = path[i], b = path[i + 1];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len, ny = dx / len;   // left-side normal
 
-      const countSeed  = cellRng(row * 11 + col * 5, side + 100);
-      const bladeCount = 2 + Math.floor(countSeed * countSeed * 7);
+    const segLen = Math.hypot(dx, dy);
+    const bladeSpacing = CELL * 0.55;
+    const count = Math.ceil(segLen / bladeSpacing);
 
-      const positions = [];
-      for (let i = 0; i < bladeCount; i++) {
-        positions.push(cellRng(row * 17 + col * 13 + i * 3, side * 29 + 7));
-      }
-      if (cellRng(row + col * 19, side + 200) > 0.55 && positions.length >= 2) {
-        const anchor = cellRng(row * 23, col * 41 + side);
-        positions[0] = anchor;
-        positions[1] = anchor + (cellRng(row, col + side * 3 + 1) - 0.5) * 0.12;
-        if (positions[2] !== undefined)
-          positions[2] = anchor + (cellRng(row + 1, col + side * 3 + 2) - 0.5) * 0.18;
-      }
+    for (let s = 0; s < count; s++) {
+      const t    = (s + 0.5) / count;
+      const seed = i * 500 + s;
+      const ex   = a.x + dx * t;
+      const ey   = a.y + dy * t;
 
-      for (let i = 0; i < bladeCount; i++) {
-        const t  = Math.max(0.02, Math.min(0.98, positions[i]));
-        const rx = (ndx === 0) ? x + t * CELL : (ndx > 0 ? x : x + CELL);
-        const ry = (ndy === 0) ? y + t * CELL : (ndy > 0 ? y : y + CELL);
+      for (const side of [-1, 1]) {
+        if (cellRng(seed, side + 10) < 0.2) continue;
+        const edgeX = ex + nx * R * side;
+        const edgeY = ey + ny * R * side;
 
-        const r1 = cellRng(row * 53 + col * 29 + i * 11, side * 37 + 1);
-        const r2 = cellRng(row * 53 + col * 29 + i * 11, side * 37 + 2);
-        const r3 = cellRng(row * 53 + col * 29 + i * 11, side * 37 + 3);
-        const r4 = cellRng(row * 53 + col * 29 + i * 11, side * 37 + 4);
-
+        const r1 = cellRng(seed, side * 7 + 1);
+        const r2 = cellRng(seed, side * 7 + 2);
+        const r3 = cellRng(seed, side * 7 + 3);
+        const r4 = cellRng(seed, side * 7 + 4);
         const h      = CELL * (0.08 + r1 * 0.11);
         const w      = CELL * (0.025 + r2 * 0.035);
         const lean   = (r3 - 0.5) * CELL * 0.28;
@@ -591,32 +664,84 @@ function drawSmoothPath() {
         const cr = Math.round(25 + bright * 30);
         const cg = Math.round(85 + bright * 75);
         const cb = Math.round(8  + bright * 18);
-        drawGrassBlade(rx, ry, ndx, ndy, lean, h, w, `rgb(${cr},${cg},${cb})`);
+        drawGrassBlade(edgeX, edgeY, nx * side, ny * side, lean, h, w, `rgb(${cr},${cg},${cb})`);
       }
     }
   }
 
-  // ── Entry & exit portals ──
-  const p0 = path[0], pN = path[path.length - 1];
-  for (const [ex, ey, label, fill, border] of [
-    [cx(p0.col), cy(p0.row), 'START', '#2a7a2a', '#60d060'],
-    [cx(pN.col), cy(pN.row), 'END',   '#8a1a1a', '#ff5050'],
-  ]) {
-    ctx.fillStyle   = fill;
-    ctx.strokeStyle = border;
-    ctx.lineWidth   = 2;
-    ctx.beginPath();
-    ctx.roundRect(ex - CELL * 0.38, ey - CELL * 0.32, CELL * 0.76, CELL * 0.64, 4);
-    ctx.fill(); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.12)';
-    ctx.beginPath();
-    ctx.roundRect(ex - CELL * 0.3, ey - CELL * 0.26, CELL * 0.6, CELL * 0.2, 3);
-    ctx.fill();
-    ctx.fillStyle    = '#fff';
-    ctx.font         = `bold ${Math.round(CELL * 0.26)}px sans-serif`;
-    ctx.textAlign    = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(label, ex, ey);
+  // ── Entry & exit flags ──
+  // Place two flags flanking each end of the path, perpendicular to the path direction.
+  const flagGateOffset = PATH_RENDER_RADIUS * 1.1;  // half-width between the two flags
+  const flagPoleH = CELL * 0.82;
+  const flagH  = CELL * 0.28;
+  const flagW  = CELL * 0.38;
+
+  const flagEndpoints = [
+    { pt: path[0],              next: path[1],                       color: '#22aa22', shadow: '#115511' },
+    { pt: path[path.length - 1], next: path[path.length - 2],        color: '#cc1111', shadow: '#661111' },
+  ];
+
+  for (const { pt, next, color, shadow } of flagEndpoints) {
+    // Direction along path and perpendicular
+    const dx = next.x - pt.x, dy = next.y - pt.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const px = -dy / len, py = dx / len;   // perpendicular unit vector
+
+    // Draw one flag on each side of the path centre
+    for (const side of [-1, 1]) {
+      const fx = pt.x + px * flagGateOffset * side;
+      const fy = pt.y + py * flagGateOffset * side;
+
+      // Pennant points in the path travel direction
+      const fdx =  dx / len, fdy = dy / len;
+
+      const poleTop = fy - flagPoleH * 0.56;
+      const poleBot = fy + flagPoleH * 0.44;
+      const poleX   = fx;
+
+      // pole shadow
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+      ctx.lineWidth   = 3;
+      ctx.beginPath();
+      ctx.moveTo(poleX + 2, poleTop + 2);
+      ctx.lineTo(poleX + 2, poleBot + 2);
+      ctx.stroke();
+
+      // pole
+      ctx.strokeStyle = '#c8a86a';
+      ctx.lineWidth   = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(poleX, poleTop);
+      ctx.lineTo(poleX, poleBot);
+      ctx.stroke();
+
+      // pennant shadow
+      ctx.fillStyle = shadow;
+      ctx.beginPath();
+      ctx.moveTo(poleX + 1,                    poleTop + 2);
+      ctx.lineTo(poleX + fdx * flagW + 1,      poleTop + fdy * flagW + flagH * 0.5 + 2);
+      ctx.lineTo(poleX + 1,                    poleTop + flagH + 2);
+      ctx.closePath();
+      ctx.fill();
+
+      // pennant
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(poleX,               poleTop);
+      ctx.lineTo(poleX + fdx * flagW, poleTop + fdy * flagW + flagH * 0.5);
+      ctx.lineTo(poleX,               poleTop + flagH);
+      ctx.closePath();
+      ctx.fill();
+
+      // sheen
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      ctx.beginPath();
+      ctx.moveTo(poleX,                        poleTop);
+      ctx.lineTo(poleX + fdx * flagW * 0.55,  poleTop + fdy * flagW * 0.55 + flagH * 0.5);
+      ctx.lineTo(poleX,                        poleTop + flagH * 0.45);
+      ctx.closePath();
+      ctx.fill();
+    }
   }
 }
 
@@ -663,7 +788,8 @@ function getTurretPopupHeight(turret) {
 }
 
 function getPopupRowAt(mx, my, popup, rowCount) {
-  if (mx < popup.px || mx > popup.px + POPUP_W) return -1;
+  const w = popup.w || POPUP_W;
+  if (mx < popup.px || mx > popup.px + w) return -1;
   const relY = my - popup.py - POPUP_TITLE_H;
   if (relY < 0) return -1;
   const idx = Math.floor(relY / POPUP_ROW_H);
@@ -761,7 +887,7 @@ function drawTierPopup(popup) {
 function drawTurretPopup(popup) {
   const rows = getTurretPopupRows(popup.turret);
   const { px, py, turret } = popup;
-  const popW = 190;
+  const popW = 240;
   const popH = getTurretPopupHeight(turret);
   drawPopupBase(px, py, popH, popW, getTierTable(turret.kind)[turret.tier].label);
 
@@ -823,7 +949,7 @@ function renderBackground() {
   // Grass tufts and bushes on non-path cells
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      if (pathSet.has(`${r},${c}`)) continue;
+      if (pathRenderSet.has(`${r},${c}`)) continue;
       const cellCX = c * CELL + CELL / 2;
       const cellCY = r * CELL + CELL / 2;
       const base   = r * 97 + c * 53;
@@ -1324,9 +1450,22 @@ function renderParticles() {
   for (const p of particles) {
     ctx.globalAlpha = p.life * 0.9;
     ctx.fillStyle   = p.color;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-    ctx.fill();
+    if (p.streak) {
+      const len = Math.sqrt(p.vx * p.vx + p.vy * p.vy) * 0.04 + 4;
+      const nx  = p.vx / (Math.sqrt(p.vx * p.vx + p.vy * p.vy) || 1);
+      const ny  = p.vy / (Math.sqrt(p.vx * p.vx + p.vy * p.vy) || 1);
+      ctx.strokeStyle  = p.color;
+      ctx.lineWidth    = p.r;
+      ctx.lineCap      = 'round';
+      ctx.beginPath();
+      ctx.moveTo(p.x - nx * len, p.y - ny * len);
+      ctx.lineTo(p.x + nx * len * 0.3, p.y + ny * len * 0.3);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
   ctx.globalAlpha = 1;
 }
@@ -1476,7 +1615,7 @@ function renderPlacementUI() {
   if (phase !== 'wave') {
     const barMsg = phase === 'between'
       ? `Wave ${wave} cleared! — Place turrets or click Start Wave ${wave + 1}  (${gold} Gold available)`
-      : `Place turrets then click Start Game  —  ${gold} Gold available`;
+      : `Place turrets then click Start Wave 1  —  ${gold} Gold available`;
     ctx.fillStyle    = 'rgba(0,15,0,0.75)';
     ctx.fillRect(0, H - 32, W, 32);
     ctx.fillStyle    = '#d4eeaa';
@@ -1484,7 +1623,86 @@ function renderPlacementUI() {
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(barMsg, W / 2, H - 16);
+
+    drawWavePreview();
   }
+}
+
+// Bounds of the last-drawn wave preview close button — used for hit-testing
+let _wavePreviewClose = null;
+
+function drawWavePreview() {
+  _wavePreviewClose = null;
+  const nextWave = wave + 1;
+  if (nextWave > wavesInLevel() || wavePreviewDismissed) return;
+
+  const enemyType = nextWave;
+  const enemyName = ENEMY_NAMES[enemyType] || 'Enemies';
+  const hp        = ENEMY_BASE_HP + (nextWave - 1) * ENEMY_HP_SCALE;
+  const speed     = (ENEMY_BASE_SPEED + (nextWave - 1) * ENEMY_SPEED_SCALE).toFixed(1);
+  const count     = ENEMIES_PER_WAVE;
+
+  const pw = 190, ph = 72;
+  const px = 8, py = 8;
+
+  // Panel background
+  ctx.fillStyle   = 'rgba(0,10,0,0.82)';
+  ctx.strokeStyle = 'rgba(80,180,60,0.5)';
+  ctx.lineWidth   = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(px, py, pw, ph, 6);
+  ctx.fill(); ctx.stroke();
+
+  // Header
+  ctx.fillStyle    = '#a0d860';
+  ctx.font         = 'bold 11px sans-serif';
+  ctx.textAlign    = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(`WAVE ${nextWave} INCOMING`, px + 10, py + 8);
+
+  // Close button (×)
+  const cx_ = px + pw - 14, cy_ = py + 10, cr = 7;
+  _wavePreviewClose = { x: cx_, y: cy_, r: cr };
+  ctx.fillStyle   = 'rgba(255,255,255,0.15)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  ctx.lineWidth   = 1;
+  ctx.beginPath(); ctx.arc(cx_, cy_, cr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle    = '#fff';
+  ctx.font         = 'bold 11px sans-serif';
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('×', cx_, cy_);
+
+  // Mini enemy silhouette
+  const c  = ENEMY_COLORS[enemyType];
+  const ex = px + 22, ey = py + 42, er = 10;
+  ctx.fillStyle = c.body;
+  ctx.beginPath(); ctx.arc(ex, ey + 2, er * 0.75, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(ex, ey - er * 0.6, er * 0.55, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = c.dark; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(ex, ey + 2, er * 0.75, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(ex, ey - er * 0.6, er * 0.55, 0, Math.PI * 2); ctx.stroke();
+
+  // Stats
+  ctx.fillStyle    = '#e8e8c0';
+  ctx.font         = 'bold 13px sans-serif';
+  ctx.textAlign    = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(enemyName, px + 40, py + 32);
+  ctx.fillStyle = '#a0c880';
+  ctx.font      = '11px sans-serif';
+  ctx.fillText(`${count} enemies`, px + 40, py + 48);
+  ctx.fillText(`HP ${hp}  ·  Speed ${speed}`, px + 40, py + 62);
+}
+
+function handleWavePreviewClick(mx, my) {
+  if (!_wavePreviewClose) return false;
+  const { x, y, r } = _wavePreviewClose;
+  if ((mx - x) ** 2 + (my - y) ** 2 <= r * r) {
+    wavePreviewDismissed = true;
+    return true;
+  }
+  return false;
 }
 
 // ─── Main render ──────────────────────────────────────────────────────────────
