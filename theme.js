@@ -805,7 +805,7 @@ function drawPopupBase(px, py, h, w, title) {
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle    = '#7090b8';
-  ctx.font         = 'bold 10px sans-serif';
+  ctx.font         = "bold 10px 'Cinzel', serif";
   ctx.textAlign    = 'left';
   ctx.textBaseline = 'middle';
   ctx.fillText(title, px + POPUP_PAD, py + POPUP_TITLE_H / 2);
@@ -859,14 +859,14 @@ function drawPlacementCard(cx_, cy_, kind, hovered) {
 
   // Label
   ctx.fillStyle    = canAfford ? '#d4eeaa' : '#3a4a60';
-  ctx.font         = '10px sans-serif';
+  ctx.font         = "10px 'Cinzel', serif";
   ctx.textAlign    = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(label, cx_ + CARD_W / 2, cy_ + CARD_H - 26);
 
   // Cost
   ctx.fillStyle = canAfford ? '#f0c040' : '#3a4a60';
-  ctx.font      = 'bold 11px sans-serif';
+  ctx.font      = "bold 11px 'Cinzel', serif";
   ctx.fillText(`${cost} Gold`, cx_ + CARD_W / 2, cy_ + CARD_H - 12);
   ctx.textAlign = 'left';
 }
@@ -905,7 +905,7 @@ function drawTurretPopup(popup) {
     }
 
     ctx.fillStyle = row.type === 'maxed' ? '#3a4a60' : isSell ? '#ff8080' : canAct ? '#d4eeaa' : '#3a4a60';
-    ctx.font      = '12px sans-serif';
+    ctx.font      = "12px 'Cinzel', serif";
     ctx.textAlign = 'left';
     ctx.fillText(row.label, px + POPUP_PAD, ry + POPUP_ROW_H / 2);
 
@@ -927,11 +927,22 @@ function bgRng(a, b) {
 }
 
 function renderBackground() {
-  // Base grass fill
+  const isVolcano   = currentLevel === 9;
+  const isDesolate  = currentLevel >= 5;
+
+  if (isVolcano) {
+    _renderVolcanoBackground();
+  } else if (isDesolate) {
+    _renderDesolateBackground();
+  } else {
+    _renderGrassBackground();
+  }
+}
+
+function _renderGrassBackground() {
   ctx.fillStyle = '#4a7a24';
   ctx.fillRect(0, 0, W, H);
 
-  // Scattered ellipse colour patches
   for (let i = 0; i < 60; i++) {
     const px    = bgRng(i, 1) * W;
     const py    = bgRng(i, 2) * H;
@@ -946,7 +957,6 @@ function renderBackground() {
   }
   ctx.globalAlpha = 1;
 
-  // Grass tufts and bushes on non-path cells
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       if (pathRenderSet.has(`${r},${c}`)) continue;
@@ -954,7 +964,6 @@ function renderBackground() {
       const cellCY = r * CELL + CELL / 2;
       const base   = r * 97 + c * 53;
 
-      // Grass tufts (~30% of cells)
       if (bgRng(base, 9) < 0.30) {
         const bladeCount = 2 + Math.floor(bgRng(base, 10) * 3);
         for (let b = 0; b < bladeCount; b++) {
@@ -964,7 +973,6 @@ function renderBackground() {
           const lean   = (bgRng(base + b, 14) - 0.5) * CELL * 0.12;
           const bright = 0.4 + bgRng(base + b, 15) * 0.6;
           const gr     = Math.round(85 + bright * 70);
-
           ctx.globalAlpha = 0.22;
           ctx.fillStyle   = '#1a3005';
           ctx.beginPath();
@@ -973,7 +981,6 @@ function renderBackground() {
           ctx.lineTo(bx + 2 + 1, by + 1);
           ctx.closePath();
           ctx.fill();
-
           ctx.globalAlpha = 1;
           ctx.fillStyle   = `rgb(${Math.round(28 + bright * 22)},${gr},${Math.round(8 + bright * 12)})`;
           ctx.beginPath();
@@ -985,17 +992,14 @@ function renderBackground() {
         }
       }
 
-      // Bushes (~8% of cells)
       if (bgRng(base, 16) < 0.08) {
         const blobCount = 3 + Math.floor(bgRng(base, 17) * 3);
         const bushR     = CELL * (0.12 + bgRng(base, 18) * 0.1);
-
         ctx.globalAlpha = 0.25;
         ctx.fillStyle   = '#1a3005';
         ctx.beginPath();
         ctx.ellipse(cellCX + 2, cellCY + 3, bushR * 1.6, bushR * 0.5, 0, 0, Math.PI * 2);
         ctx.fill();
-
         for (let b = 0; b < blobCount; b++) {
           const ox     = (bgRng(base + b, 19) - 0.5) * bushR * 1.8;
           const oy     = (bgRng(base + b, 20) - 0.5) * bushR * 0.9;
@@ -1007,7 +1011,6 @@ function renderBackground() {
           ctx.arc(cellCX + ox, cellCY + oy, br, 0, Math.PI * 2);
           ctx.fill();
         }
-
         ctx.globalAlpha = 0.35;
         ctx.fillStyle   = '#90cc40';
         ctx.beginPath();
@@ -1018,6 +1021,199 @@ function renderBackground() {
     }
   }
   ctx.globalAlpha = 1;
+}
+
+function _renderDesolateBackground() {
+  // Ashen, scorched earth — grey-brown with dead patches
+  ctx.fillStyle = '#3a2e22';
+  ctx.fillRect(0, 0, W, H);
+
+  // Cracked earth patches
+  for (let i = 0; i < 55; i++) {
+    const px    = bgRng(i, 1) * W;
+    const py    = bgRng(i, 2) * H;
+    const rx    = CELL * (0.5 + bgRng(i, 3) * 1.4);
+    const ry    = CELL * (0.3 + bgRng(i, 4) * 0.8);
+    const angle = bgRng(i, 5) * Math.PI;
+    ctx.globalAlpha = 0.2 + bgRng(i, 7) * 0.22;
+    ctx.fillStyle   = bgRng(i, 6) > 0.5 ? '#1a1208' : '#5a4428';
+    ctx.beginPath();
+    ctx.ellipse(px, py, rx, ry, angle, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Dead stumps, ash marks, scorched rocks
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (pathRenderSet.has(`${r},${c}`)) continue;
+      const cellCX = c * CELL + CELL / 2;
+      const cellCY = r * CELL + CELL / 2;
+      const base   = r * 97 + c * 53;
+
+      // Dead grass stubs (~25% of cells)
+      if (bgRng(base, 9) < 0.25) {
+        const bladeCount = 1 + Math.floor(bgRng(base, 10) * 2);
+        for (let b = 0; b < bladeCount; b++) {
+          const bx   = cellCX + (bgRng(base + b, 11) - 0.5) * CELL * 0.55;
+          const by   = cellCY + (bgRng(base + b, 12) - 0.5) * CELL * 0.55;
+          const h    = CELL * (0.08 + bgRng(base + b, 13) * 0.07);
+          const lean = (bgRng(base + b, 14) - 0.5) * CELL * 0.1;
+          ctx.globalAlpha = 0.55;
+          ctx.fillStyle   = bgRng(base + b, 15) > 0.5 ? '#6a5030' : '#4a3818';
+          ctx.beginPath();
+          ctx.moveTo(bx - 1.5, by);
+          ctx.quadraticCurveTo(bx + lean * 0.8, by - h * 0.5, bx + lean, by - h);
+          ctx.lineTo(bx + 1.5, by);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      // Scorched rocks (~6% of cells)
+      if (bgRng(base, 16) < 0.06) {
+        const rockR = CELL * (0.1 + bgRng(base, 17) * 0.1);
+        ctx.globalAlpha = 0.7;
+        ctx.fillStyle   = '#2a2018';
+        ctx.beginPath();
+        ctx.ellipse(cellCX + 1, cellCY + 2, rockR * 1.4, rockR * 0.7, bgRng(base, 18) * Math.PI, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#4a3828';
+        ctx.beginPath();
+        ctx.ellipse(cellCX, cellCY, rockR * 1.3, rockR * 0.65, bgRng(base, 18) * Math.PI, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+
+      // Ash smear (~4%)
+      if (bgRng(base, 19) < 0.04) {
+        ctx.globalAlpha = 0.3;
+        ctx.fillStyle   = '#888070';
+        ctx.beginPath();
+        ctx.ellipse(cellCX, cellCY, CELL * 0.4, CELL * 0.2, bgRng(base, 20) * Math.PI, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+
+  // Haze overlay — orange-grey tint at the horizon
+  const haze = ctx.createLinearGradient(0, 0, 0, H);
+  haze.addColorStop(0, 'rgba(80,40,10,0.18)');
+  haze.addColorStop(1, 'rgba(40,15,5,0.32)');
+  ctx.fillStyle = haze;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function _renderVolcanoBackground() {
+  const now = Date.now();
+
+  // Black obsidian base
+  ctx.fillStyle = '#0a0808';
+  ctx.fillRect(0, 0, W, H);
+
+  // Obsidian facet sheen patches
+  for (let i = 0; i < 50; i++) {
+    const px    = bgRng(i, 1) * W;
+    const py    = bgRng(i, 2) * H;
+    const rx    = CELL * (0.4 + bgRng(i, 3) * 1.0);
+    const ry    = CELL * (0.2 + bgRng(i, 4) * 0.5);
+    const angle = bgRng(i, 5) * Math.PI;
+    ctx.globalAlpha = 0.08 + bgRng(i, 7) * 0.10;
+    ctx.fillStyle   = bgRng(i, 6) > 0.5 ? '#3a1808' : '#201010';
+    ctx.beginPath();
+    ctx.ellipse(px, py, rx, ry, angle, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Lava pool — animated glow in the centre-bottom
+  const lavaX = W * 0.5, lavaY = H * 0.72;
+  const lavaRX = W * 0.28, lavaRY = H * 0.12;
+  const pulse = 0.75 + 0.25 * Math.sin(now * 0.002);
+
+  // Outer glow
+  const lavaGlow = ctx.createRadialGradient(lavaX, lavaY, 0, lavaX, lavaY, lavaRX * 1.8);
+  lavaGlow.addColorStop(0,   `rgba(255,120,0,${0.18 * pulse})`);
+  lavaGlow.addColorStop(0.5, `rgba(180,40,0,${0.10 * pulse})`);
+  lavaGlow.addColorStop(1,   'rgba(0,0,0,0)');
+  ctx.fillStyle = lavaGlow;
+  ctx.fillRect(0, 0, W, H);
+
+  // Lava surface
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(lavaX, lavaY, lavaRX, lavaRY, 0, 0, Math.PI * 2);
+  ctx.clip();
+  const lavaSurf = ctx.createRadialGradient(lavaX, lavaY - lavaRY * 0.3, 0, lavaX, lavaY, lavaRX);
+  lavaSurf.addColorStop(0,   '#ffcc00');
+  lavaSurf.addColorStop(0.3, '#ff6600');
+  lavaSurf.addColorStop(0.7, '#cc2200');
+  lavaSurf.addColorStop(1,   '#660000');
+  ctx.fillStyle = lavaSurf;
+  ctx.fillRect(lavaX - lavaRX, lavaY - lavaRY, lavaRX * 2, lavaRY * 2);
+
+  // Animated dark crust islands drifting on lava
+  for (let i = 0; i < 7; i++) {
+    const drift = (now * 0.00008 * (i % 2 === 0 ? 1 : -1) + i * 0.9) % (Math.PI * 2);
+    const cx2   = lavaX + Math.cos(drift) * lavaRX * (0.3 + i * 0.08);
+    const cy2   = lavaY + Math.sin(drift * 0.5) * lavaRY * 0.5;
+    const cr    = CELL * (0.3 + bgRng(i, 30) * 0.4);
+    ctx.fillStyle   = '#1a0a04';
+    ctx.strokeStyle = '#3a1800';
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.ellipse(cx2, cy2, cr * 1.6, cr * 0.7, drift, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+  }
+  ctx.restore();
+
+  // Ground-level obsidian rocks around the lava pool
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (pathRenderSet.has(`${r},${c}`)) continue;
+      const cellCX = c * CELL + CELL / 2;
+      const cellCY = r * CELL + CELL / 2;
+      const base   = r * 97 + c * 53;
+
+      // Obsidian shards (~12%)
+      if (bgRng(base, 9) < 0.12) {
+        const rockR = CELL * (0.1 + bgRng(base, 10) * 0.12);
+        ctx.globalAlpha = 0.8;
+        ctx.fillStyle   = '#150e0e';
+        ctx.strokeStyle = '#3a1010';
+        ctx.lineWidth   = 0.5;
+        ctx.beginPath();
+        ctx.ellipse(cellCX + 1, cellCY + 1, rockR * 1.5, rockR * 0.6, bgRng(base, 11) * Math.PI, 0, Math.PI * 2);
+        ctx.fill(); ctx.stroke();
+        ctx.globalAlpha = 0.4;
+        ctx.fillStyle   = '#5a2020';
+        ctx.beginPath();
+        ctx.ellipse(cellCX - rockR * 0.3, cellCY - rockR * 0.2, rockR * 0.5, rockR * 0.2, bgRng(base, 12) * Math.PI, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+
+      // Ember glow spots (~3%)
+      if (bgRng(base, 13) < 0.03) {
+        const emberPulse = 0.5 + 0.5 * Math.sin(now * 0.003 + base);
+        ctx.globalAlpha = 0.4 * emberPulse;
+        ctx.fillStyle   = '#ff4400';
+        ctx.beginPath();
+        ctx.arc(cellCX, cellCY, CELL * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+
+  // Red ceiling glow from above
+  const ceilGlow = ctx.createLinearGradient(0, 0, 0, H * 0.4);
+  ceilGlow.addColorStop(0, `rgba(120,20,0,${0.22 * pulse})`);
+  ceilGlow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = ceilGlow;
+  ctx.fillRect(0, 0, W, H);
 }
 
 // ─── Archer tower drawing (Kingdom Rush style) ───────────────────────────────
@@ -1619,7 +1815,7 @@ function renderPlacementUI() {
     ctx.fillStyle    = 'rgba(0,15,0,0.75)';
     ctx.fillRect(0, H - 32, W, 32);
     ctx.fillStyle    = '#d4eeaa';
-    ctx.font         = '13px sans-serif';
+    ctx.font         = "13px 'Cinzel', serif";
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(barMsg, W / 2, H - 16);
@@ -1640,7 +1836,7 @@ function drawWavePreview() {
   const enemyName = ENEMY_NAMES[enemyType] || 'Enemies';
   const hp        = ENEMY_BASE_HP + (nextWave - 1) * ENEMY_HP_SCALE;
   const speed     = (ENEMY_BASE_SPEED + (nextWave - 1) * ENEMY_SPEED_SCALE).toFixed(1);
-  const count     = ENEMIES_PER_WAVE;
+  const count     = enemiesPerWave();
 
   const pw = 190, ph = 72;
   const px = 8, py = 8;
@@ -1655,7 +1851,7 @@ function drawWavePreview() {
 
   // Header
   ctx.fillStyle    = '#a0d860';
-  ctx.font         = 'bold 11px sans-serif';
+  ctx.font         = "bold 11px 'Cinzel', serif";
   ctx.textAlign    = 'left';
   ctx.textBaseline = 'top';
   ctx.fillText(`WAVE ${nextWave} INCOMING`, px + 10, py + 8);
@@ -1668,7 +1864,7 @@ function drawWavePreview() {
   ctx.lineWidth   = 1;
   ctx.beginPath(); ctx.arc(cx_, cy_, cr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   ctx.fillStyle    = '#fff';
-  ctx.font         = 'bold 11px sans-serif';
+  ctx.font         = "bold 11px 'Cinzel', serif";
   ctx.textAlign    = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('×', cx_, cy_);
@@ -1685,12 +1881,12 @@ function drawWavePreview() {
 
   // Stats
   ctx.fillStyle    = '#e8e8c0';
-  ctx.font         = 'bold 13px sans-serif';
+  ctx.font         = "bold 13px 'Cinzel', serif";
   ctx.textAlign    = 'left';
   ctx.textBaseline = 'middle';
   ctx.fillText(enemyName, px + 40, py + 32);
   ctx.fillStyle = '#a0c880';
-  ctx.font      = '11px sans-serif';
+  ctx.font      = "11px 'Cinzel', serif";
   ctx.fillText(`${count} enemies`, px + 40, py + 48);
   ctx.fillText(`HP ${hp}  ·  Speed ${speed}`, px + 40, py + 62);
 }

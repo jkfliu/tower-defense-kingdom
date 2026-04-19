@@ -43,8 +43,8 @@ function buildPathSet(waypoints, radius) {
 // bottom zone (rows 16–20), guaranteeing ≥ MIN_PATH_LENGTH coverage.
 
 function buildPath() {
-  const topZone    = () => randInt(2, 6) * CELL + CELL / 2;
-  const bottomZone = () => randInt(ROWS - 8, ROWS - 4) * CELL + CELL / 2;
+  const topZone    = () => randInt(2, 7) * CELL + CELL / 2;
+  const bottomZone = () => randInt(ROWS - 9, ROWS - 4) * CELL + CELL / 2;
   const NUM_MID    = 4;
   const firstTop   = Math.random() < 0.5;
 
@@ -71,16 +71,26 @@ function generatePath() {
 // Derived from original {row, col} waypoints via: x = col*CELL + CELL/2, y = row*CELL + CELL/2
 
 const CAMPAIGN_LEVEL_WAYPOINTS = [
-  // 0 — Forest Outpost: gentle diagonal S-curve
-  [ {x:10,y:240}, {x:200,y:140}, {x:380,y:340}, {x:560,y:120}, {x:790,y:260} ],
-  // 1 — River Crossing: wide diagonal sweep then back
-  [ {x:10,y:100}, {x:260,y:380}, {x:400,y:200}, {x:540,y:400}, {x:790,y:140} ],
-  // 2 — Mountain Pass: tight zigzag diagonals
-  [ {x:10,y:200}, {x:160,y:60}, {x:320,y:420}, {x:480,y:80}, {x:640,y:360}, {x:790,y:180} ],
-  // 3 — Ruined Village: long crossing diagonals
-  [ {x:10,y:380}, {x:220,y:80}, {x:380,y:300}, {x:500,y:60}, {x:650,y:340}, {x:790,y:160} ],
-  // 4 — Castle Siege: sharp angular switchbacks
-  [ {x:10,y:160}, {x:150,y:420}, {x:300,y:100}, {x:450,y:380}, {x:600,y:80}, {x:790,y:320} ],
+  // 0 — Forest Outpost: gentle S-curve
+  [ {x:10,y:300}, {x:250,y:175}, {x:475,y:425}, {x:700,y:150}, {x:990,y:325} ],
+  // 1 — Goblin Warren: wide sweep
+  [ {x:10,y:475}, {x:225,y:125}, {x:500,y:375}, {x:725,y:100}, {x:990,y:375} ],
+  // 2 — Mudflats: shallow zigzag
+  [ {x:10,y:150}, {x:275,y:450}, {x:538,y:175}, {x:763,y:475}, {x:990,y:250} ],
+  // 3 — Stoneback Ridge: tight high-low zigzag
+  [ {x:10,y:250}, {x:188,y:75}, {x:388,y:500}, {x:588,y:75}, {x:800,y:475}, {x:990,y:225} ],
+  // 4 — Troll Bridge: long diagonal crossings
+  [ {x:10,y:475}, {x:250,y:100}, {x:475,y:400}, {x:650,y:75}, {x:850,y:425}, {x:990,y:200} ],
+  // 5 — Shadowfen: sweeping curves with deep dips
+  [ {x:10,y:200}, {x:200,y:525}, {x:413,y:100}, {x:625,y:525}, {x:825,y:150}, {x:990,y:425} ],
+  // 6 — Ashwood: fast aggressive switchbacks
+  [ {x:10,y:525}, {x:213,y:75}, {x:400,y:525}, {x:575,y:100}, {x:750,y:475}, {x:990,y:125} ],
+  // 7 — Cursed Ruins: deep crossing diagonals
+  [ {x:10,y:125}, {x:250,y:525}, {x:463,y:100}, {x:663,y:500}, {x:850,y:100}, {x:990,y:350} ],
+  // 8 — Demon Gate: maximum chaos zigzag
+  [ {x:10,y:375}, {x:175,y:75}, {x:350,y:525}, {x:525,y:75}, {x:700,y:525}, {x:875,y:75}, {x:990,y:300} ],
+  // 9 — Volcano Summit: long winding approach
+  [ {x:10,y:300}, {x:225,y:75}, {x:413,y:475}, {x:588,y:125}, {x:738,y:525}, {x:900,y:175}, {x:990,y:400} ],
 ];
 
 function getLevelPath(levelId) {

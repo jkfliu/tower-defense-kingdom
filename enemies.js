@@ -4,16 +4,19 @@
 //   wave, path, lives, enemies.
 
 function makeEnemy() {
-  const hp = ENEMY_BASE_HP + (wave - 1) * ENEMY_HP_SCALE;
+  const diffScale = 1 + selectedDifficulty * 0.4;
+  const hp = (ENEMY_BASE_HP + (wave - 1) * ENEMY_HP_SCALE) * diffScale;
+  const pool = LEVEL_ENEMY_POOL[currentLevel] || [1];
+  const type = pool[Math.floor(Math.random() * pool.length)];
   const seg0len = Math.hypot(path[1].x - path[0].x, path[1].y - path[0].y);
   return {
-    type:          wave,
+    type,
     pathIndex:     1,         // index of destination waypoint
     distRemaining: seg0len,   // px left until reaching path[pathIndex]
     dist:          0,         // total px traveled (for animation)
     hp,
     maxHp: hp,
-    speed: ENEMY_BASE_SPEED + (wave - 1) * ENEMY_SPEED_SCALE,
+    speed: (ENEMY_BASE_SPEED + (wave - 1) * ENEMY_SPEED_SCALE) * diffScale,
     x:      path[0].x,
     y:      path[0].y,
     facing: Math.atan2(path[1].y - path[0].y, path[1].x - path[0].x),

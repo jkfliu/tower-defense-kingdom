@@ -2,9 +2,9 @@
 // All top-level game configuration. No logic — just data.
 
 // ─── Grid ─────────────────────────────────────────────────────────────────────
-const COLS = 40, ROWS = 24, CELL = 20;
-const W    = COLS * CELL;   // 800
-const H    = ROWS * CELL;   // 480
+const COLS = 50, ROWS = 30, CELL = 20;
+const W    = COLS * CELL;   // 1000
+const H    = ROWS * CELL;   // 600
 
 // ─── Waves ────────────────────────────────────────────────────────────────────
 const ENEMIES_PER_WAVE = 10;
@@ -18,6 +18,20 @@ const ENEMY_BASE_SPEED  = 1.8 * CELL;   // px/sec
 const ENEMY_SPEED_SCALE = 0.35 * CELL;  // px/sec per wave
 const ENEMY_NAMES       = [null, 'Goblins', 'Orcs', 'Trolls', 'Dark Elves', 'Demons'];
 
+// Enemy types allowed per level (0-based). Levels 0-3: no dark elves/demons.
+const LEVEL_ENEMY_POOL = [
+  [1],           // 0 Forest Outpost   — goblins only
+  [1, 2],        // 1 Goblin Warren    — goblins + orcs
+  [1, 2],        // 2 Mudflats         — goblins + orcs
+  [2, 3],        // 3 Stoneback Ridge  — orcs + trolls
+  [1, 2, 3],     // 4 Troll Bridge     — mixed early
+  [3, 4],        // 5 Shadowfen        — trolls + dark elves
+  [2, 3, 4],     // 6 Ashwood          — orcs + trolls + dark elves
+  [4, 5],        // 7 Cursed Ruins     — dark elves + demons
+  [3, 4, 5],     // 8 Demon Gate       — trolls + dark elves + demons
+  [4, 5],        // 9 Volcano Summit   — dark elves + demons
+];
+
 // ─── Bullets & combat ─────────────────────────────────────────────────────────
 const ARROW_SPEED      = 420;   // px/s
 const ORB_SPEED        = 320;   // px/s — orbs travel slower than arrows
@@ -29,7 +43,7 @@ const FIRE_ANIM_DECAY  = 9;     // muzzle-flash fade multiplier
 
 // ─── Economy ──────────────────────────────────────────────────────────────────
 const STARTING_GOLD  = 100;
-const GOLD_PER_KILL  = [null, 8, 12, 18, 25, 35];  // 1-based wave index
+const GOLD_PER_KILL  = [null, 8, 10, 12, 15, 18, 22, 26, 30, 35, 40];  // 1-based wave index
 
 // ─── Path ─────────────────────────────────────────────────────────────────────
 const MIN_PATH_LENGTH   = 60 * CELL;  // ~25% canvas coverage minimum
@@ -37,12 +51,19 @@ const PATH_BLOCK_RADIUS  = CELL * 0.5; // grid cells within this px distance of 
 const PATH_RENDER_RADIUS = CELL * 1.0;  // visual half-width of the path stroke
 
 // ─── Campaign ─────────────────────────────────────────────────────────────────
+// mx/my are positions in map.jpg image space (1125×1137).
+// Levels 0-5 form the vertical arm (top-left going down), 6-9 bend right to the volcano.
 const CAMPAIGN_LEVELS = [
-  { id: 0, name: 'Forest Outpost',  x: 90,  y: 260, icon: 'forest',   startGold: 100 },
-  { id: 1, name: 'River Crossing',  x: 230, y: 175, icon: 'river',    startGold: 120 },
-  { id: 2, name: 'Mountain Pass',   x: 390, y: 215, icon: 'mountain', startGold: 140 },
-  { id: 3, name: 'Ruined Village',  x: 560, y: 270, icon: 'village',  startGold: 160 },
-  { id: 4, name: 'Castle Siege',    x: 700, y: 170, icon: 'castle',   startGold: 180 },
+  { id: 0, name: 'Forest Outpost',  mx: 180, my: 155,  icon: 'forest',   startGold: 100, description: 'Goblins raid from the treeline. Hold the outpost at all costs.' },
+  { id: 1, name: 'Goblin Warren',   mx: 180, my: 290,  icon: 'forest',   startGold: 110, description: 'The goblins have dug in deep. Root them out before they multiply.' },
+  { id: 2, name: 'Mudflats',        mx: 180, my: 430,  icon: 'river',    startGold: 120, description: 'Orcs wade through the marshes. Slow them in the mud or be overwhelmed.' },
+  { id: 3, name: 'Stoneback Ridge', mx: 180, my: 570,  icon: 'mountain', startGold: 135, description: 'Trolls hurl boulders from the ridgeline. Reach them before they reach you.' },
+  { id: 4, name: 'Troll Bridge',    mx: 180, my: 710,  icon: 'mountain', startGold: 150, description: 'A horde crosses the old stone bridge. Destroy it or hold the line.' },
+  { id: 5, name: 'Shadowfen',       mx: 180, my: 860,  icon: 'village',  startGold: 165, description: 'Dark Elves emerge from the fen at dusk. They move fast — be ready.' },
+  { id: 6, name: 'Ashwood',         mx: 370, my: 930,  icon: 'village',  startGold: 180, description: 'The forest burns. Demons fan the flames while dark elves harry your flanks.' },
+  { id: 7, name: 'Cursed Ruins',    mx: 560, my: 980,  icon: 'volcano',  startGold: 200, description: 'Demons have consecrated the ruins. Purge them or lose the east forever.' },
+  { id: 8, name: 'Demon Gate',      mx: 750, my: 1020, icon: 'volcano',  startGold: 220, description: 'The gate tears open. Wave after wave pours through. Hold until dawn.' },
+  { id: 9, name: 'Volcano Summit',  mx: 940, my: 1040, icon: 'volcano',  startGold: 250, description: 'The demon lord commands from the volcano\'s peak. End this — now.' },
 ];
 
 // ─── Tower tiers ──────────────────────────────────────────────────────────────

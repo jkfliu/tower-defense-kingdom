@@ -4,6 +4,25 @@
 
 // ─── Canvas interaction ───────────────────────────────────────────────────────
 canvas.addEventListener('mousemove', e => {
+  if (phase === 'map' && mapDragging) {
+    mapCamX = mapDragCamX + (e.clientX - mapDragStartX);
+    mapCamY = mapDragCamY + (e.clientY - mapDragStartY);
+    clampMapCamera();
+    return;
+  }
+  if (phase === 'map' && mapPopup) {
+    const rect = canvas.getBoundingClientRect();
+    handleMapPopupHover(e.clientX - rect.left, e.clientY - rect.top);
+    return;
+  }
+  if (phase === 'map' && _resetViewRect) {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const r  = _resetViewRect;
+    canvas.style.cursor = (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) ? 'pointer' : 'default';
+    return;
+  }
   if (phase !== 'placing' && phase !== 'between' && phase !== 'wave') {
     hoverCell = null;
     return;
@@ -26,14 +45,67 @@ canvas.addEventListener('mousemove', e => {
   }
 });
 
-canvas.addEventListener('mouseleave', () => { hoverCell = null; });
+canvas.addEventListener('mouseleave', () => {
+  hoverCell   = null;
+  mapDragging = false;
+});
+
+// ─── Map pan & zoom ───────────────────────────────────────────────────────────
+canvas.addEventListener('wheel', e => {
+  if (phase !== 'map' || mapPopup) return;
+  e.preventDefault();
+  const rect  = canvas.getBoundingClientRect();
+  const mx    = e.clientX - rect.left;
+  const my    = e.clientY - rect.top;
+  const delta = e.deltaY < 0 ? 1.1 : 0.91;
+  const newZoom = Math.min(2.5, Math.max(0.35, mapZoom * delta));
+  // Zoom toward cursor
+  mapCamX = mx - (mx - mapCamX) * (newZoom / mapZoom);
+  mapCamY = my - (my - mapCamY) * (newZoom / mapZoom);
+  mapZoom = newZoom;
+  clampMapCamera();
+}, { passive: false });
+
+canvas.addEventListener('mousedown', e => {
+  if (phase !== 'map' || mapPopup) return;
+  mapDragging   = true;
+  mapDragStartX = e.clientX;
+  mapDragStartY = e.clientY;
+  mapDragCamX   = mapCamX;
+  mapDragCamY   = mapCamY;
+});
+
+document.addEventListener('mouseup', () => { mapDragging = false; });
 
 canvas.addEventListener('click', e => {
+  // Suppress click if it was the end of a drag
+  const dragDist = Math.hypot(e.clientX - mapDragStartX, e.clientY - mapDragStartY);
+  if (phase === 'map' && !mapPopup && dragDist > 5) return;
+
   const rect = canvas.getBoundingClientRect();
   const mx  = e.clientX - rect.left;
   const my  = e.clientY - rect.top;
 
-  if (phase === 'map') { handleMapClick(mx, my); return; }
+  if (phase === 'map')     { handleMapClick(mx, my); return; }
+  if (phase === 'victory') {
+    if (_victoryBtnRect) {
+      const b = _victoryBtnRect;
+      if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
+        if (currentLevel >= CAMPAIGN_LEVELS.length) {
+          // All levels done — wrap campaign, go straight to map
+          currentLevel = 0;
+          campaignLoop++;
+          phase = 'map';
+        } else {
+          // More levels remain — play reveal animation
+          revealProgress = 0;
+          phase = 'reveal';
+        }
+        updateHUD();
+      }
+    }
+    return;
+  }
   if (phase !== 'placing' && phase !== 'between' && phase !== 'wave') return;
 
   const col = Math.floor(mx / CELL);
@@ -132,6 +204,9 @@ function updateHUD() {
   document.getElementById('lives-val').textContent = phase === 'map' ? '—' : lives;
   document.getElementById('score-val').textContent = score;
   document.getElementById('gold-val').textContent  = phase === 'map' ? '—' : gold;
+  const inGame = phase === 'placing' || phase === 'wave' || phase === 'between';
+  document.getElementById('start-btn').style.display      = inGame ? 'inline-block' : 'none';
+  document.getElementById('quit-btn').style.display        = inGame ? 'inline-block' : 'none';
 }
 
 // ─── Button event listeners ───────────────────────────────────────────────────
@@ -140,6 +215,13 @@ document.getElementById('mute-btn').addEventListener('click', () => {
   const btn = document.getElementById('mute-btn');
   btn.textContent = muted ? 'SFX: OFF' : 'SFX: ON';
   btn.classList.toggle('muted', muted);
+});
+
+document.getElementById('debug-btn').addEventListener('click', () => {
+  debugMode = !debugMode;
+  const btn = document.getElementById('debug-btn');
+  btn.textContent = debugMode ? 'Debug: ON' : 'Debug: OFF';
+  btn.classList.toggle('active', debugMode);
 });
 
 document.getElementById('start-btn').addEventListener('click', () => {
@@ -153,6 +235,19 @@ document.getElementById('start-btn').addEventListener('click', () => {
 });
 
 document.getElementById('new-game-btn').addEventListener('click', initGame);
+
+
+document.getElementById('quit-btn').addEventListener('click', () => {
+  bullets   = [];
+  enemies   = [];
+  particles = [];
+  paused    = false;
+  phase     = 'map';
+  setStartButton('', ['dimmed']);
+  canvas.classList.remove('placing');
+  hideOverlay();
+  updateHUD();
+});
 
 document.getElementById('action-btn').addEventListener('click', () => {
   if (phase === 'lose') {
@@ -185,8 +280,16 @@ function startWave() {
 }
 
 function initGame() {
-  currentLevel = 0;
-  campaignLoop    = 0;
+  currentLevel       = 0;
+  campaignLoop       = 0;
+  selectedDifficulty = 0;
+  justCompletedLevel = 0;
+  revealProgress     = 0;
+  // Fit the map image inside the canvas at startup
+  mapZoom = Math.min(W / MAP_IMG_W, H / MAP_IMG_H) * 0.92;
+  mapCamX = (W - MAP_IMG_W * mapZoom) / 2;
+  mapCamY = (H - MAP_IMG_H * mapZoom) / 2;
+  mapDragging = false;
   turrets   = [];
   enemies   = [];
   bullets   = [];

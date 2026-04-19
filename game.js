@@ -19,17 +19,39 @@ let path, pathSet, pathRenderSet;
 let turrets, enemies, bullets, particles;
 let wave, lives, score, gold, phase;
 let spawnedCount, lastSpawnTime, lastFrame;
-let paused = false;
+let paused    = false;
+let debugMode = false;
 let hoverCell = null;           // {row, col} under mouse, or null
 
 // Campaign state
-let currentLevel = 0;
-let campaignLoop    = 0;
+let currentLevel       = 0;
+let campaignLoop       = 0;
+let selectedDifficulty = 0;
+let justCompletedLevel = 0; // which level was just beaten (for reveal animation)
+let revealProgress     = 0; // 0→1 during 'reveal' phase
 
 // UI state
 let wavePreviewDismissed = false;
 
-function wavesInLevel() { return currentLevel + 1; }
+function wavesInLevel()    { return Math.min(currentLevel + 1, 5); }
+function enemiesPerWave()  { return debugMode ? 1 : ENEMIES_PER_WAVE; }
+
+// Map camera state (pan + zoom over the map image)
+let mapCamX    = 0;      // world-space pan offset X
+let mapCamY    = 0;      // world-space pan offset Y
+let mapZoom    = 1.0;    // current zoom level
+let mapDragging = false; // true while mouse is held for panning
+let mapDragStartX = 0;
+let mapDragStartY = 0;
+let mapDragCamX   = 0;
+let mapDragCamY   = 0;
+
+// Preloaded map background image
+const MAP_IMG = new Image();
+MAP_IMG.src = 'map.jpg';
+
+// Map popup state
+let mapPopup = null; // { levelId } when level-select popup is open, else null
 
 // Popup state
 let tierPopup           = null; // { row, col, px, py } — new-turret popup
@@ -44,7 +66,7 @@ function gameLoop(ts) {
   lastFrame = ts;
 
   if (phase === 'wave' && !paused) {
-    if (spawnedCount < ENEMIES_PER_WAVE && ts - lastSpawnTime >= SPAWN_MS) {
+    if (spawnedCount < enemiesPerWave() && ts - lastSpawnTime >= SPAWN_MS) {
       enemies.push(makeEnemy());
       spawnedCount++;
       lastSpawnTime = ts;
@@ -60,7 +82,7 @@ function gameLoop(ts) {
       bullets = [];
       setStartButton('', ['dimmed']);
       showOverlay('Defeated!', 'Try Again', `Score: ${score}`);
-    } else if (spawnedCount >= ENEMIES_PER_WAVE && enemies.length === 0 && particles.length === 0) {
+    } else if (spawnedCount >= enemiesPerWave() && enemies.length === 0 && particles.length === 0) {
       bullets = [];
       if (wave >= wavesInLevel()) {
         completeLevel();
@@ -75,6 +97,11 @@ function gameLoop(ts) {
 
   if (phase === 'map') {
     drawKingdomMap();
+  } else if (phase === 'victory') {
+    drawVictoryScreen();
+  } else if (phase === 'reveal') {
+    revealProgress = Math.min(1, revealProgress + dt / 2.2);
+    drawRevealScreen();
   } else {
     render();
   }
