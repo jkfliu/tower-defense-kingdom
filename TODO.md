@@ -1,12 +1,14 @@
 # Sylvan Defenders — TODO
 
 ## Gameplay depth
+- [ ] Bomber tower — slow fire rate, area-of-effect explosion, damages all enemies in radius
 
 ## Kingdom map & campaign
 - [ ] Enemy scaling across loops (each full loop +40% HP/speed)
 
 ## Feel & polish
 - [ ] Perspective tilt view — board tilts toward viewer; towers/enemies stand up vertically (plan ready)
+- [ ] Level visual identity — unique paths + thematic backgrounds per level matching kingdom map (e.g. Forest Outpost shows trees, Mudflats shows swamp, Volcano Summit shows lava flows)
 
 ## UX
 - (all done)

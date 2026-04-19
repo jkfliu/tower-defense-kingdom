@@ -581,31 +581,39 @@ function drawSmoothPath() {
   const R = PATH_RENDER_RADIUS;
   const D = R * 2;
 
+  // Extend first and last points beyond canvas edge so rounded caps are hidden
+  const OVERHANG = R + 6;
+  const p0 = path[0], p1 = path[1];
+  const pN = path[path.length - 1], pN1 = path[path.length - 2];
+  const d0  = Math.hypot(p1.x - p0.x, p1.y - p0.y) || 1;
+  const dN  = Math.hypot(pN.x - pN1.x, pN.y - pN1.y) || 1;
+  const start = { x: p0.x - (p1.x - p0.x) / d0 * OVERHANG,  y: p0.y - (p1.y - p0.y) / d0 * OVERHANG };
+  const end   = { x: pN.x + (pN.x - pN1.x) / dN * OVERHANG, y: pN.y + (pN.y - pN1.y) / dN * OVERHANG };
+
+  function strokePath() {
+    ctx.beginPath();
+    ctx.moveTo(start.x, start.y);
+    for (let i = 1; i < path.length - 1; i++) ctx.lineTo(path[i].x, path[i].y);
+    ctx.lineTo(end.x, end.y);
+    ctx.stroke();
+  }
+
   // ── Dark edge outline ──
   ctx.strokeStyle = '#6a3e10';
   ctx.lineWidth   = D + 4;
   ctx.lineCap     = 'round';
   ctx.lineJoin    = 'round';
-  ctx.beginPath();
-  ctx.moveTo(path[0].x, path[0].y);
-  for (let i = 1; i < path.length; i++) ctx.lineTo(path[i].x, path[i].y);
-  ctx.stroke();
+  strokePath();
 
   // ── Main dirt fill ──
   ctx.strokeStyle = '#c8a05a';
   ctx.lineWidth   = D;
-  ctx.beginPath();
-  ctx.moveTo(path[0].x, path[0].y);
-  for (let i = 1; i < path.length; i++) ctx.lineTo(path[i].x, path[i].y);
-  ctx.stroke();
+  strokePath();
 
   // ── Centre highlight ──
   ctx.strokeStyle = 'rgba(255,220,140,0.18)';
   ctx.lineWidth   = D * 0.45;
-  ctx.beginPath();
-  ctx.moveTo(path[0].x, path[0].y);
-  for (let i = 1; i < path.length; i++) ctx.lineTo(path[i].x, path[i].y);
-  ctx.stroke();
+  strokePath();
 
   // ── Dirt specks + grass blades along each segment (single pass) ──
   ctx.lineCap = 'butt';
