@@ -68,9 +68,10 @@ canvas.addEventListener('wheel', e => {
   e.preventDefault();
   const { mx, my } = canvasXY(e);
   const delta = e.deltaY < 0 ? 1.1 : 0.91;
-  const newZoom = Math.min(2.5, Math.max(0.35, mapZoom * delta));
-  // Zoom toward cursor
-  mapCamX = mx - (mx - mapCamX) * (newZoom / mapZoom);
+  const newZoom = Math.min(2.5, Math.max(baseMapZoom(), mapZoom * delta));
+  // Zoom toward cursor in viewport-local coords
+  const vx = mx - MAP_VP_X;
+  mapCamX = vx - (vx - mapCamX) * (newZoom / mapZoom);
   mapCamY = my - (my - mapCamY) * (newZoom / mapZoom);
   mapZoom = newZoom;
   clampMapCamera();
@@ -94,7 +95,9 @@ canvas.addEventListener('click', e => {
 
   const { mx, my } = canvasXY(e);
 
-  if (confirmRestart === 'campaign') { handleConfirmRestartClick(mx, my); return; }
+  // Confirm restart dialog takes priority over all phases
+  if (confirmRestart) { handleConfirmRestartClick(mx, my); return; }
+
   if (phase === 'map')     { handleMapClick(mx, my); return; }
   if (phase === 'victory') {
     if (_victoryBtnRect && pointInRect(mx, my, _victoryBtnRect)) {
@@ -113,12 +116,6 @@ canvas.addEventListener('click', e => {
     return;
   }
   if (phase !== 'placing' && phase !== 'between' && phase !== 'wave') return;
-
-  // Confirm restart dialog takes priority
-  if (confirmRestart === 'level') {
-    handleConfirmRestartClick(mx, my);
-    return;
-  }
 
   const col = Math.floor(mx / CELL);
   const row = Math.floor(my / CELL);

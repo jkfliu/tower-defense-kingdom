@@ -22,9 +22,10 @@ function startLevel(id) {
   score     = 0;
   gold      = CAMPAIGN_LEVELS[id].startGold;
   phase     = 'placing';
-  lastFrame     = 0;
-  spawnedCount  = 0;
-  lastSpawnTime = 0;
+  lastFrame      = 0;
+  spawnedCount   = 0;
+  lastSpawnTime  = 0;
+  nextSpawnDelay = SPAWN_MS_MIN + Math.random() * (SPAWN_MS_MAX - SPAWN_MS_MIN);
   hoverCell     = null;
   resetPopups();
   paused = false;
@@ -46,39 +47,63 @@ function completeLevel() {
 
 // ─── Map camera helpers ───────────────────────────────────────────────────────
 
-// Map image is 1125×1137; we place nodes using those pixel coords.
-const MAP_IMG_W = 1125;
-const MAP_IMG_H = 1137;
+// Map image is 1124×1124; we place nodes using those pixel coords.
+const MAP_IMG_W = 1124;
+const MAP_IMG_H = 1124;
+
+// The map is displayed in a 600×600 viewport centred horizontally on the 1000×600 canvas.
+const MAP_VP_W = H;                    // 600
+const MAP_VP_H = H;                    // 600
+const MAP_VP_X = (W - MAP_VP_W) / 2;  // 200 — left edge of viewport
+
+// Zoom that fits the full image inside the viewport — hard min for zooming out.
+function baseMapZoom() { return Math.min(MAP_VP_W / MAP_IMG_W, MAP_VP_H / MAP_IMG_H); }
+
+// Scaled node radius — consistent across drawKingdomMap and drawRevealScreen.
+function scaledNodeR() { return Math.max(10, NODE_R * mapZoom); }
 
 // Convert a point in map-image space to canvas screen space.
 function worldToCanvas(wx, wy) {
-  return {
-    x: wx * mapZoom + mapCamX,
-    y: wy * mapZoom + mapCamY,
-  };
+  return { x: MAP_VP_X + mapCamX + wx * mapZoom,
+           y:            mapCamY + wy * mapZoom };
 }
 
 // Convert canvas screen coords back to map-image space.
 function canvasToWorld(sx, sy) {
-  return {
-    x: (sx - mapCamX) / mapZoom,
-    y: (sy - mapCamY) / mapZoom,
-  };
+  return { x: (sx - MAP_VP_X - mapCamX) / mapZoom,
+           y: (sy -            mapCamY) / mapZoom };
 }
 
-// Clamp camera so the image doesn't drift fully off-screen.
+// Reset to the default fully-zoomed-out, centred view within the viewport.
 function resetMapCamera() {
-  mapZoom = Math.min(W / MAP_IMG_W, H / MAP_IMG_H) * 0.92;
-  mapCamX = (W - MAP_IMG_W * mapZoom) / 2;
-  mapCamY = (H - MAP_IMG_H * mapZoom) / 2;
+  mapZoom = baseMapZoom();
+  mapCamX = (MAP_VP_W - MAP_IMG_W * mapZoom) / 2;
+  mapCamY = (MAP_VP_H - MAP_IMG_H * mapZoom) / 2;
 }
 
+// Clamp camera so the image stays within the viewport.
+// No margin when image fits exactly — prevents over-panning at base zoom.
 function clampMapCamera() {
-  const iw = MAP_IMG_W * mapZoom;
-  const ih = MAP_IMG_H * mapZoom;
-  const margin = 80;
-  mapCamX = Math.min(margin, Math.max(W - iw - margin, mapCamX));
-  mapCamY = Math.min(margin, Math.max(H - ih - margin, mapCamY));
+  const iw  = MAP_IMG_W * mapZoom;
+  const ih  = MAP_IMG_H * mapZoom;
+  const mxX = iw > MAP_VP_W ? 0 : (MAP_VP_W - iw) / 2;
+  const mxY = ih > MAP_VP_H ? 0 : (MAP_VP_H - ih) / 2;
+  mapCamX = Math.min(mxX, Math.max(MAP_VP_W - iw - mxX, mapCamX));
+  mapCamY = Math.min(mxY, Math.max(MAP_VP_H - ih - mxY, mapCamY));
+}
+
+// Draw the map image clipped to the viewport — shared by drawKingdomMap and drawRevealScreen.
+function drawMapViewport() {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(MAP_VP_X, 0, MAP_VP_W, MAP_VP_H);
+  ctx.clip();
+  if (MAP_IMG.complete && MAP_IMG.naturalWidth > 0) {
+    ctx.translate(MAP_VP_X + mapCamX, mapCamY);
+    ctx.scale(mapZoom, mapZoom);
+    ctx.drawImage(MAP_IMG, 0, 0, MAP_IMG_W, MAP_IMG_H);
+  }
+  ctx.restore();
 }
 
 // ─── Shared node drawing ──────────────────────────────────────────────────────
@@ -149,22 +174,14 @@ function drawMapNode(i, now, scaledNodeR, overrideAlpha = 1) {
 
 function drawRevealScreen() {
   const now = Date.now();
-  const scaledNodeR = Math.max(10, NODE_R * mapZoom);
+  const nodeR = scaledNodeR();
 
-  // Draw map image
   ctx.fillStyle = '#1a1008';
   ctx.fillRect(0, 0, W, H);
-  if (MAP_IMG.complete && MAP_IMG.naturalWidth > 0) {
-    ctx.save();
-    ctx.translate(mapCamX, mapCamY);
-    ctx.scale(mapZoom, mapZoom);
-    ctx.drawImage(MAP_IMG, 0, 0, MAP_IMG_W, MAP_IMG_H);
-    ctx.restore();
-  }
+  drawMapViewport();
 
-  // Draw all previously visible nodes (everything up to and including justCompletedLevel)
   for (let i = 0; i <= justCompletedLevel; i++) {
-    drawMapNode(i, now, scaledNodeR);
+    drawMapNode(i, now, nodeR);
   }
 
   const hasNext = currentLevel < CAMPAIGN_LEVELS.length;
@@ -219,7 +236,7 @@ function drawRevealScreen() {
       ctx.translate(to.x, to.y);
       ctx.scale(pop, pop);
       ctx.translate(-to.x, -to.y);
-      drawMapNode(currentLevel, now, scaledNodeR, nodeP);
+      drawMapNode(currentLevel, now, nodeR, nodeP);
       ctx.restore();
     }
   }
@@ -240,20 +257,11 @@ function drawKingdomMap() {
   ctx.fillStyle = '#1a1008';
   ctx.fillRect(0, 0, W, H);
 
-  // ── Map image with pan/zoom ──────────────────────────────────────────────────
-  if (MAP_IMG.complete && MAP_IMG.naturalWidth > 0) {
-    ctx.save();
-    ctx.translate(mapCamX, mapCamY);
-    ctx.scale(mapZoom, mapZoom);
-    ctx.drawImage(MAP_IMG, 0, 0, MAP_IMG_W, MAP_IMG_H);
-    ctx.restore();
-  }
-
-  // ── Level nodes (drawn in screen space via worldToCanvas) ────────────────────
-  const scaledNodeR = Math.max(10, NODE_R * mapZoom);
-
+  // ── Map image + nodes clipped to the 600×600 viewport ───────────────────────
+  drawMapViewport();
+  const nodeR = scaledNodeR();
   for (let i = 0; i <= Math.min(currentLevel, CAMPAIGN_LEVELS.length - 1); i++) {
-    drawMapNode(i, now, scaledNodeR);
+    drawMapNode(i, now, nodeR);
   }
 
   // ── HUD overlay (always screen-space) ────────────────────────────────────────
@@ -677,7 +685,8 @@ function handleMapClick(mx, my) {
     const lv = CAMPAIGN_LEVELS[i];
     const dx = w.x - lv.mx, dy = w.y - lv.my;
     if (dx * dx + dy * dy <= hitR * hitR) {
-      mapPopup = { levelId: i };
+      mapPopup    = { levelId: i };
+      mapDragging = false; // cancel any in-progress drag so the camera doesn't shift
       break;
     }
   }

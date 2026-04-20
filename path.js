@@ -93,6 +93,30 @@ const CAMPAIGN_LEVEL_WAYPOINTS = [
   [ {x:10,y:300}, {x:225,y:75}, {x:413,y:475}, {x:588,y:125}, {x:738,y:525}, {x:900,y:175}, {x:990,y:400} ],
 ];
 
+// Samples points along the same midpoint-quadratic-bezier curves used by drawSmoothPath.
+// strokePath logic: start at pts[0], for each interior point use it as bezier control point
+// with the midpoint-to-next as the anchor, then line to pts[last].
+function densifyPath(waypoints, samplesPerSegment = 12) {
+  const pts = waypoints;
+  const result = [{ ...pts[0] }];
+
+  for (let i = 1; i < pts.length - 1; i++) {
+    const p0  = i === 1 ? pts[0] : { x: (pts[i - 1].x + pts[i].x) / 2, y: (pts[i - 1].y + pts[i].y) / 2 };
+    const cp  = pts[i];
+    const p1  = { x: (pts[i].x + pts[i + 1].x) / 2, y: (pts[i].y + pts[i + 1].y) / 2 };
+    for (let s = 1; s <= samplesPerSegment; s++) {
+      const t = s / samplesPerSegment, mt = 1 - t;
+      result.push({
+        x: mt * mt * p0.x + 2 * mt * t * cp.x + t * t * p1.x,
+        y: mt * mt * p0.y + 2 * mt * t * cp.y + t * t * p1.y,
+      });
+    }
+  }
+
+  result.push({ ...pts[pts.length - 1] });
+  return result;
+}
+
 function getLevelPath(levelId) {
-  return CAMPAIGN_LEVEL_WAYPOINTS[levelId];
+  return densifyPath(CAMPAIGN_LEVEL_WAYPOINTS[levelId]);
 }

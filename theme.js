@@ -593,7 +593,13 @@ function drawSmoothPath() {
   function strokePath() {
     ctx.beginPath();
     ctx.moveTo(start.x, start.y);
-    for (let i = 1; i < path.length - 1; i++) ctx.lineTo(path[i].x, path[i].y);
+    // Quadratic bezier through midpoints — waypoints become control points for smooth curves
+    for (let i = 1; i < path.length - 1; i++) {
+      const cur  = path[i];
+      const next = i < path.length - 2 ? path[i + 1] : end;
+      const mid  = { x: (cur.x + next.x) / 2, y: (cur.y + next.y) / 2 };
+      ctx.quadraticCurveTo(cur.x, cur.y, mid.x, mid.y);
+    }
     ctx.lineTo(end.x, end.y);
     ctx.stroke();
   }
@@ -1726,6 +1732,7 @@ function renderOrb(b) {
 function renderPlacementUI() {
   if (phase !== 'placing' && phase !== 'between' && phase !== 'wave') return;
 
+
   const previewCell = tierPopup ? { row: tierPopup.row, col: tierPopup.col } : hoverCell;
   if (previewCell) {
     const valid = isValidPlacement(previewCell.row, previewCell.col);
@@ -1879,7 +1886,7 @@ function drawConfirmRestart() {
   ctx.font         = "bold 16px 'Cinzel', serif";
   ctx.textAlign    = 'center';
   ctx.textBaseline = 'top';
-  ctx.fillText(confirmRestart === 'campaign' ? 'New Campaign?' : 'Restart Level?', px + PW / 2, py + 20);
+  ctx.fillText(confirmRestart === 'campaign' ? 'Start a new Campaign?' : 'Restart Level?', px + PW / 2, py + 20);
 
   // Sub-text
   ctx.fillStyle = '#5a3c10';

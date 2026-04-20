@@ -51,7 +51,7 @@ const GOLD_PER_KILL  = [null, 8, 10, 12, 15, 18, 22, 26, 30, 35, 40];  // 1-base
 
 // ─── Path ─────────────────────────────────────────────────────────────────────
 const MIN_PATH_LENGTH   = 60 * CELL;  // ~25% canvas coverage minimum
-const PATH_BLOCK_RADIUS  = CELL * 0.5; // grid cells within this px distance of any segment are blocked
+const PATH_BLOCK_RADIUS  = CELL * 1.0; // grid cells within this px distance of any segment are blocked
 const PATH_RENDER_RADIUS = CELL * 1.0;  // visual half-width of the path stroke
 
 // ─── Campaign ─────────────────────────────────────────────────────────────────

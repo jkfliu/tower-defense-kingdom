@@ -72,3 +72,6 @@
 - [x] Free-angle diagonal paths — pixel-space waypoints, stroke-based rendering
 - [x] Per-bullet-type speeds — ARROW_SPEED and ORB_SPEED independently tunable
 - [x] Refactor — drawTowerBase/drawTierFlags, resetPopups, resetMapCamera, canvasXY, cached DOM refs, .hud-toggle CSS, ENEMY_RADIUS
+- [x] Curved level paths — bezier densification so enemies follow visual curves; PATH_BLOCK_RADIUS matches render width
+- [x] Kingdom map viewport — 600×600 centred display, proper pan/zoom clamping, shared drawMapViewport()
+- [x] Restart level bug fix — nextSpawnDelay reset on startLevel; confirmRestart dialog intercepts all phases
