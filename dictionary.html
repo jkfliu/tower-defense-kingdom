@@ -91,18 +91,22 @@
 const randInt = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
 const cx = col => col * CELL + CELL / 2;
 const cy = row => row * CELL + CELL / 2;
+const pointInRect = () => false;
 
-// These globals are read by drawEnemy / drawArcherTower / drawMageTower
+// Globals read by drawEnemy / drawArcherTower / drawMageTower
 let ctx, path, pathSet, pathRenderSet;
 let turrets = [], enemies = [], bullets = [], particles = [];
 let wave = 1, lives = 3, score = 0, gold = 100, phase = 'placing';
 let hoverCell = null, tierPopup = null, popupHoverIdx = -1;
 let turretPopup = null, turretPopupHoverIdx = -1;
-let wavePreviewDismissed = true;
-let paused = false;
+let wavePreviewDismissed = true, paused = false;
+let currentLevel = 0, campaignLoop = 0, selectedDifficulty = 0;
+let justCompletedLevel = 0, revealProgress = 0, confirmRestart = '';
+let mapPopup = null, mapCamX = 0, mapCamY = 0, mapZoom = 1, mapDragging = false;
 
 function isValidPlacement() { return true; }
 function updateHUD() {}
+function wavesInLevel() { return currentLevel + 1; }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -127,66 +131,42 @@ const scaleX = PREVIEW_W / W, scaleY = PREVIEW_H / H;
 function drawLevelPreview(levelId) {
   const { canvas: c, ctx: lctx } = makeOffscreenCtx(PREVIEW_W, PREVIEW_H);
 
-  // Set up path globals
-  const wp = CAMPAIGN_LEVEL_WAYPOINTS[levelId];
-  path          = wp;
-  pathSet       = buildPathSet(wp, PATH_BLOCK_RADIUS);
-  pathRenderSet = buildPathSet(wp, PATH_RENDER_RADIUS);
+  const wp    = CAMPAIGN_LEVEL_WAYPOINTS[levelId];
+  const dense = densifyPath(wp);
 
-  withCtx(lctx, () => {
-    lctx.save();
-    lctx.scale(scaleX, scaleY);
+  lctx.save();
+  lctx.scale(scaleX, scaleY);
 
-    // Grass background
-    lctx.fillStyle = '#4a7a24';
-    lctx.fillRect(0, 0, W, H);
+  // Grass background
+  lctx.fillStyle = '#4a7a24';
+  lctx.fillRect(0, 0, W, H);
 
-    // Path
-    const R = PATH_RENDER_RADIUS;
-    const D = R * 2;
-    lctx.strokeStyle = '#6a3e10';
-    lctx.lineWidth = D + 4;
-    lctx.lineCap = lctx.lineJoin = 'round';
+  // Path using densified bezier points — matches game visual exactly
+  lctx.lineCap = lctx.lineJoin = 'round';
+  function traceDense() {
     lctx.beginPath();
-    lctx.moveTo(path[0].x, path[0].y);
-    for (let i = 1; i < path.length; i++) lctx.lineTo(path[i].x, path[i].y);
-    lctx.stroke();
+    dense.forEach((p, i) => i === 0 ? lctx.moveTo(p.x, p.y) : lctx.lineTo(p.x, p.y));
+  }
+  lctx.strokeStyle = '#6a3e10'; lctx.lineWidth = PATH_RENDER_RADIUS * 2 + 4; traceDense(); lctx.stroke();
+  lctx.strokeStyle = '#c8a05a'; lctx.lineWidth = PATH_RENDER_RADIUS * 2;     traceDense(); lctx.stroke();
+  lctx.strokeStyle = 'rgba(255,220,140,0.18)'; lctx.lineWidth = PATH_RENDER_RADIUS; traceDense(); lctx.stroke();
 
-    lctx.strokeStyle = '#c8a05a';
-    lctx.lineWidth = D;
-    lctx.beginPath();
-    lctx.moveTo(path[0].x, path[0].y);
-    for (let i = 1; i < path.length; i++) lctx.lineTo(path[i].x, path[i].y);
-    lctx.stroke();
+  // Start (green) and end (red) dots
+  const p0 = wp[0], pN = wp[wp.length - 1];
+  for (const [px, py, col] of [[p0.x, p0.y, '#22cc22'], [pN.x, pN.y, '#cc2222']]) {
+    lctx.fillStyle = col;
+    lctx.beginPath(); lctx.arc(px, py, 14, 0, Math.PI * 2); lctx.fill();
+    lctx.strokeStyle = '#fff'; lctx.lineWidth = 2; lctx.stroke();
+  }
 
-    lctx.strokeStyle = 'rgba(255,220,140,0.18)';
-    lctx.lineWidth = D * 0.45;
-    lctx.beginPath();
-    lctx.moveTo(path[0].x, path[0].y);
-    for (let i = 1; i < path.length; i++) lctx.lineTo(path[i].x, path[i].y);
-    lctx.stroke();
+  lctx.restore();
 
-    // Start dot (green) and end dot (red)
-    const p0 = path[0], pN = path[path.length - 1];
-    for (const [px, py, col] of [[p0.x, p0.y, '#22cc22'], [pN.x, pN.y, '#cc2222']]) {
-      lctx.fillStyle = col;
-      lctx.beginPath();
-      lctx.arc(px, py, 14, 0, Math.PI * 2);
-      lctx.fill();
-      lctx.strokeStyle = '#fff';
-      lctx.lineWidth = 2;
-      lctx.stroke();
-    }
-
-    lctx.restore();
-
-    // Labels
-    lctx.fillStyle = '#fff';
-    lctx.font = 'bold 11px sans-serif';
-    lctx.textAlign = 'center';
-    lctx.fillText('START', p0.x * scaleX, p0.y * scaleY - 12);
-    lctx.fillText('END',   pN.x * scaleX, pN.y * scaleY - 12);
-  });
+  // START / END labels (in preview space, outside the scaled block)
+  lctx.fillStyle = '#fff';
+  lctx.font = 'bold 11px sans-serif';
+  lctx.textAlign = 'center';
+  lctx.fillText('START', p0.x * scaleX, p0.y * scaleY - 12);
+  lctx.fillText('END',   pN.x * scaleX, pN.y * scaleY - 12);
 
   return c;
 }
@@ -283,7 +263,6 @@ function drawEnemyCard(type) {
   const { canvas: c, ctx: ectx } = makeOffscreenCtx(ENEMY_CANVAS_SIZE, ENEMY_CANVAS_SIZE);
 
   const hp = (ENEMY_BASE_HP + (type - 1) * ENEMY_HP_SCALE) * ENEMY_HP_MOD[type];
-  const speed = (ENEMY_BASE_SPEED + (type - 1) * ENEMY_SPEED_SCALE) * ENEMY_SPEED_MOD[type];
 
   const e = {
     type,
@@ -299,23 +278,21 @@ function drawEnemyCard(type) {
     ectx.fillStyle = '#3a5a1e';
     ectx.fillRect(0, 0, ENEMY_CANVAS_SIZE, ENEMY_CANVAS_SIZE);
 
-    // Draw enemy facing right (east)
-    const facing = 0;
-    const absSin = Math.abs(Math.sin(facing));
+    const absSin = Math.abs(Math.sin(0));
     const scaleY = 1 - absSin * 0.22;
 
     ectx.save();
     ectx.translate(e.x, e.y);
-    ectx.rotate(facing - Math.PI / 2);
+    ectx.rotate(-Math.PI / 2);
     ectx.scale(1, scaleY);
 
     const ep = { ...e, x: 0, y: 0 };
     switch (type) {
-      case 1: drawGoblin(ep);  break;
-      case 2: drawOrc(ep);     break;
-      case 3: drawTroll(ep);   break;
-      case 4: drawDarkElf(ep); break;
-      case 5: drawDemon(ep);   break;
+      case 1: drawGoblin(ep);   break;
+      case 2: drawOrc(ep);      break;
+      case 3: drawTroll(ep);    break;
+      case 4: drawDarkElf(ep);  break;
+      case 5: drawDemon(ep);    break;
     }
     ectx.restore();
   });
@@ -327,7 +304,7 @@ const enemiesGrid = document.getElementById('enemies-grid');
 const waveNames = ENEMY_NAMES.slice(1); // skip null at index 0
 
 waveNames.forEach((name, i) => {
-  const type = i + 1;
+  const type  = i + 1;
   const hp    = Math.round((ENEMY_BASE_HP + (type - 1) * ENEMY_HP_SCALE) * ENEMY_HP_MOD[type]);
   const speed = (((ENEMY_BASE_SPEED + (type - 1) * ENEMY_SPEED_SCALE) * ENEMY_SPEED_MOD[type]) / CELL).toFixed(1);
 

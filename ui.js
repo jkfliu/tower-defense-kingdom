@@ -228,6 +228,7 @@ $debugBtn.addEventListener('click', () => {
   $debugBtn.classList.toggle('active', debugMode);
 });
 
+
 $startBtn.addEventListener('click', () => {
   if (phase === 'placing' || phase === 'between') {
     startWave();
